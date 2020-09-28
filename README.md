@@ -1,1 +1,1 @@
-# autonomous_drone_plant_detection
+# Autonomous Drone Plant Detection and Localization
