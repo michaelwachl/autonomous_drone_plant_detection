@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="2">
+
+  <name>tello_description</name>
+  <version>0.1.0</version>
+  <description>Flock description files</description>
+
+  <maintainer email="clyde@mcqueen.net">Clyde McQueen</maintainer>
+  <license>non</license>
+
+  <author>Clyde McQueen</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+</package>

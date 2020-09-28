@@ -1,0 +1,26 @@
+vendor: 0x18ec
+product: 0x3399
+
+index: 0
+
+width: 640
+height: 480
+
+video_mode: compressed
+frame_rate: 30
+
+timestamp_method: start
+
+auto_exposure: 3
+auto_white_balance: false
+auto_focus: false
+auto_hue: false
+
+exposure_absolute: 0.01
+iris_absolute: 1
+focus_absolute: 1
+brightness: 1000
+contrast: 0
+gain: 0
+saturation: 0
+sharpness: 0
