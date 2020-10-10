@@ -1,0 +1,21 @@
+
+<launch>
+
+<!-- Pointcloud publishing node for testing -->
+<!-- <node pkg="pointcloud_pub" type="pointcloud_pub_node" name="pointcloud_pub" output="screen" launch-prefix="xterm -e"/> -->
+
+
+<!-- Start cloud nodes -->
+<!-- Cloud Scaling node -->
+<node pkg="pointcloud_editor" type="pointcloud_editor_node" name="pointcloud_editor" output="screen">
+</node>
+
+<!-- Cloud filter node -->
+<node pkg="pointcloud_editor" type="pointcloud_scaler_node" name="pointcloud_scaler" output="screen">
+</node>
+
+
+<!-- Load dynamic parameter -->
+<node pkg="dynamic_reconfigure" name="dynamic_load_object_detection" type="dynparam" args="load /cloud_editor $(find pointcloud_editor)/config/cloud_params.yaml" />
+
+</launch>

@@ -1,0 +1,31 @@
+  
+# Scale for SLAM cloud
+  WORLD_SCALE_: 2.0
+
+# Show Pointclouds, only if node runs on computer!
+  VISIU_: false
+  CONSOLE_OUTPUT_: true  
+
+# Prefiltering parameter:
+  LEAF_SIZE_: 0.01
+  MAX_DEPTH_: 0.25
+  MAX_WIDTH_: 0.35
+
+  CLUSTER_MAX_: 600
+  CLUSTER_MIN_: 30
+  CLUSTER_TOLERANCE_: 0.04
+
+# Shape filtering parameters:
+  PLANE_RATIO_: 0.3
+  ZYLINDER_RATIO_: 0.28
+  X_LIM_MAX_: 0.13
+  X_LIM_MIN_: 0.06
+  Y_LIM_MAX_: 0.13
+  Y_LIM_MIN_: 0.06
+  Z_LIM_MAX_: 4.0
+  Z_LIM_MIN_: 0.0
+
+  OBJECT_HEIGHT_MAX_: 0.2
+  OBJECT_HEIGHT_MIN_: 0.11
+  OBJECT_WIDTH_MAX_: 0.34
+  OBJECT_WIDTH_MIN_: 0.25
