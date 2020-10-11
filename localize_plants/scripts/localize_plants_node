@@ -1,0 +1,361 @@
+#!/usr/bin/env python
+import sys
+import rospy
+import time
+from geometry_msgs.msg import Twist, PoseStamped, Point, Pose, Quaternion, PoseArray
+# import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud
+from nav_msgs.msg import Path, Odometry
+from geometry_msgs.msg import PoseStamped, Point32
+from std_msgs.msg import String, Empty, Int8, Header
+from visualization_msgs.msg import Marker
+from sensor_msgs.msg import Image, ChannelFloat32
+from darknet_ros_msgs.msg import BoundingBox, BoundingBoxes, ObjectCount
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from tf import TransformListener, LookupException, ConnectivityException, ExtrapolationException
+import tf.transformations as transformations
+from copy import deepcopy
+import math
+import numpy as np
+import cv2
+from yaml import load
+import rospkg
+
+
+class Scale:
+    """Class for marker scale definition (rviz)"""
+    x = 1.0
+    y = 1.0
+    z = 1.0
+
+
+class PlantLocalizer(object):
+    """Controller to fly Tello in 3D coordinates"""
+    def __init__(self):
+        # load parameter for calculation
+        try:
+            from yaml import CLoader as Loader
+        except ImportError:
+            from yaml import Loader
+
+        # get an instance of RosPack with the default search paths
+        rospack = rospkg.RosPack()
+        path = rospack.get_path('localize_plants')
+
+        with open(path+'/config/localize.yaml') as my_file:
+            parameter = load(my_file, Loader=Loader)
+        print("Params loaded: ", parameter)
+        self.min_line_length = parameter['min_line_length']
+        self.max_line_length = parameter['max_line_length']
+        self.line_step = parameter['line_step']
+        self.discard_margin = parameter['discard_margin']     # in pixel
+        self.latency_image_position = parameter['latency_image_position']
+        # camera matrix for tello single cam
+        """              f  x  0 
+         camera_matrix = 0  f  y
+                         cx cy 1       
+
+        f: focal length
+        c: optical center     
+        """
+        self.camera_matrix = np.array(parameter['camera_matrix']['data'], dtype=np.float32)
+        self.camera_matrix = self.camera_matrix.reshape((3, 3))
+        self.dist_coeffs = np.array(parameter['distortion_coefficients']['data'], dtype=np.float32)
+        print(self.camera_matrix)
+        """
+        # alternative camera parameters
+        self.camera_matrix = np.array([[924.873180, 0.000000, 486.997346],
+                                       [0.000000, 923.504522, 364.308527],
+                                       [0.000000, 0.000000, 1.000000]], dtype=np.float32)
+                                       
+        self.dist_coeffs = np.array([-0.034749, 0.071514, 0.000363, 0.003131, 0.000000], dtype=np.float32)                             
+        """
+        # initialize ROS node
+        rospy.init_node('localize_plant_node', anonymous=True)
+        # get node name
+        self.ns_node = 'localize_plant/'   # rospy.get_namespace()
+
+        # define variables
+        self.current_pose = PoseStamped()
+        self.current_yaw = 0.0
+        self.slam_control = False
+        self.first_pointcould = PointCloud()
+        header = Header()
+        header.stamp = rospy.Time.now()
+        header.frame_id = 'map'
+        self.first_pointcould.header = header
+        self.points = None
+        self.first_pointcould.header = header
+        self.second_pointcould = PointCloud()
+        self.second_pointcould.header.frame_id = 'map'
+        self.line_point = Point32()
+        self.ns_tello = 'tello/'
+        self.ns_darknet = 'darknet_ros/'
+        self.ns_plant_loc = 'plant_localizer/'
+        self.bag_time = None
+        self.bounding_box_time = rospy.Time()
+
+        # 90 deg around y-axis
+        self.pos_listener = TransformListener()
+        self.rot_camera = np.array([[0.0, 0.0, -1.0],
+                                   [0.0, 1.0, 0.0],
+                                   [1.0, 0.0, 0.0]], dtype=np.float32)
+
+        self.slam_pose_topic = 'orb_slam_2_ros/pose'
+
+        self.msg_boundingBoxes = BoundingBoxes()
+
+        # ROS Subs und Pubs initialize
+        rospy.Subscriber(self.ns_tello+'odom', Odometry, self.cb_odom, queue_size=1)
+        rospy.Subscriber(self.ns_darknet+'found_object', ObjectCount, self.cb_objects, queue_size=1)
+        rospy.Subscriber(self.ns_darknet+'bounding_boxes', BoundingBoxes, self.cb_bounding_boxes, queue_size=1)
+
+        self.pub_first_cloud = rospy.Publisher(self.ns_plant_loc + "label_one_cloud", PointCloud, queue_size=10)
+        self.pub_second_cloud = rospy.Publisher(self.ns_plant_loc + "label_two_cloud", PointCloud, queue_size=10)
+        self.pub_marker = rospy.Publisher('plant_marker', Marker, queue_size=10)
+
+        # container for
+        plant_locations = []
+
+        # invert camera matrix for projetion to 3D coordinates
+        self.camera_matrix_inv = np.linalg.inv(self.camera_matrix)
+
+        self.test = np.zeros((3, 1, 2), dtype=np.float32)
+        self.test[0, :] = [486.99, 364.30]
+        self.test[1, :] = [0.0, 0.0]
+        self.test[2, :] = [600.0, 400.0]
+        self.labels = [0, 1, 0]
+        print('init done')
+        # keep process alive
+        # rospy.spin()
+
+    def get_transform_to_map(self):
+        """try to transfrom from current points from camera frame to map frame
+        """
+        try:
+            self.pos_listener.waitForTransform('map', 'camera_frame', rospy.Time(), rospy.Duration(10))
+            lookup_time = rospy.Time.now() - rospy.Duration(self.latency)
+            trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
+            # print('current_time: ', rospy.Time.now(), '  time from bounding box:', self.bounding_box_time)
+            # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', self.bounding_box_time)
+            # Get relative transform between frames
+            # offset_to_world = np.matrix(transformations.quaternion_matrix(rot))
+            trans_to_map = np.array(transformations.quaternion_matrix(rot))
+            trans_to_map[0, 3] = trans[0]
+            trans_to_map[1, 3] = trans[1]
+            trans_to_map[2, 3] = trans[2]
+            return trans_to_map
+        except (LookupException, ConnectivityException, ExtrapolationException) as e:
+            print('No Position Data available', e)
+        return None
+
+    def undistort_and_project(self, uv_pts, labels):
+        """Converts 2D pixel images points to the spherical coordinate system.
+        First pixel coordinates are undistorted with calibration matrix and distortion coefficiants.
+        Inverse matrix of Intrinsics of camera are taken into account to transform into cartesian vertices and
+        then converted to spherical coordinates.
+        """
+        # (u, v) is the pixel input point
+        num_pts = uv_pts.shape[0]
+        # uv_pts.shape = (num_pts, 1, 2)
+
+        # do the actual undistortion
+        # calculate undistorted pixel coordinates
+        uv_pts = cv2.undistortPoints(uv_pts, self.camera_matrix, self.dist_coeffs, P=self.camera_matrix)
+        # transform to homogeneous coordinates, add 1
+        pts_h = cv2.convertPointsToHomogeneous(np.float32(uv_pts))
+        pts_h.shape = (num_pts, 3)
+        xyz_pts = np.dot(pts_h, self.camera_matrix_inv.T)
+        print("xyz: ", xyz_pts)
+        # transform to homogeneous coordinates, add 1 row
+        xyz_pts_h = cv2.convertPointsToHomogeneous(np.float32(xyz_pts))
+        xyz_pts_h.shape = (num_pts, 4)
+        self.calculate_and_add_lines(xyz_pts_h, labels)
+
+    def calculate_and_add_lines(self, points, labels, time):
+        # get current transformation
+        camera_to_map = self.get_transform_to_map(time)
+        # print('Transformation matrix: ', camera_to_map)
+        if camera_to_map is None:
+            print("Transform not possible")
+            return
+        # Calculate lines in map coordinates
+        # map_points = np.dot(points, camera_to_map.T)
+        # print('Map points: ', map_points)
+        for i in range(len(labels)):
+            if labels[i] == 0:
+                for scale in np.arange(self.min_line_length, self.max_line_length, self.line_step):
+                    # Compose with point to get pose in map frame
+                    scaled_point = scale*points[i, :]
+                    scaled_point[3] = 1.0
+                    point_in_map = np.array(np.dot(scaled_point, camera_to_map.T))
+                    self.line_point.x = point_in_map[0]
+                    self.line_point.y = point_in_map[1]
+                    self.line_point.z = point_in_map[2]
+                    self.first_pointcould.points.append(deepcopy(self.line_point))
+            elif labels[i] == 1:
+                for scale in np.arange(self.min_line_length, self.max_line_length, self.line_step):
+                    # Compose with point to get pose in map frame
+                    scaled_point = scale*points[i, :]
+                    scaled_point[3] = 1.0
+                    point_in_map = np.array(np.dot(scaled_point, camera_to_map.T))
+                    self.line_point.x = point_in_map[0]
+                    self.line_point.y = point_in_map[1]
+                    self.line_point.z = point_in_map[2]
+                    self.second_pointcould.points.append(deepcopy(self.line_point))
+
+        # publish pointclouds
+        self.pub_first_cloud.publish(self.first_pointcould)
+        self.pub_second_cloud.publish(self.second_pointcould)
+        print('New lines published')
+
+    def calculate_center_points(self, bounding_boxes):
+        center_points = np.zeros((len(bounding_boxes), 1, 2), dtype=np.float32)
+        labels = []
+        i = 0
+        for box in bounding_boxes:
+            #   --> x
+            #   |
+            #   v  y
+            center_x = box.xmin + int((box.xmax-box.xmin)/2)
+            center_y = box.ymin + int((box.ymax-box.ymin)/2)
+            center_point = [center_x, center_y]
+            center_points[i, :] = center_point
+            labels.append(box.id)
+            i += 1
+
+        return center_points, labels, time
+
+    def cb_objects(self, msg):
+        object_number = msg.count
+
+    def estimate_scale(self, width, height):
+        return 1.0
+
+    def filter_bounding_boxes(self, bounding_boxes):
+        filtered_boxes = []
+        scales = []
+        for box in bounding_boxes:
+            #   --> x
+            #   |
+            #   v  y
+            width = box.xmax-box.xmin
+            height = box.ymax-box.ymin
+            print('width: ', width, '   height: ', height)
+            # estimate scale
+            est_scale = self.estimate_scale(width, height)
+            wth_ratio = width/height
+            if self.min_wth_ratio < wth_ratio < self.max_wth_ratio:
+                filtered_boxes.append(box)
+            else:
+                print('box was filtered')
+        return filtered_boxes, scales
+
+    def cb_bounding_boxes(self, msg):
+        print('bounding box received')
+        if len(msg.bounding_boxes) > 0:
+            self.bounding_box_time = msg.header.stamp
+            # get time of image of detection for correct time stamp
+            image_time = msg.image_header.stamp
+            filtered_boxed, scale_est = self.filter_bounding_boxes(msg.bounding_boxes)
+            if len(filtered_boxed) > 0:
+                center_points, labels, time = self.calculate_center_points(filtered_boxed)
+                print("Center points pixel: ", center_points, "  Labels: ", labels)
+                self.undistort_and_project(center_points, labels, image_time)
+
+    def cb_odom(self, msg):
+        # print('odom callback')
+        if self.slam_control == False:
+            self.bag_time = msg.header.stamp
+            self.current_pose = msg.pose.pose
+            # inverse yaw
+            self.current_pose.orientation.w = -self.current_pose.orientation.w
+            current_orientation = self.current_pose.orientation
+            current_orientation_list = [current_orientation.x, current_orientation.y, current_orientation.z,
+                                        current_orientation.w]
+            current_angles = euler_from_quaternion(current_orientation_list)
+            self.current_yaw = current_angles[2]
+
+    def cb_slam_position(self, msg):
+        if self.slam_control:
+            self.slam_pos = msg.pose.position
+            self.slam_quaternion = msg.pose.orientation
+            self.slam_orientation_rad_list = euler_from_quaternion(
+                [self.slam_quaternion.x, self.slam_quaternion.y, self.slam_quaternion.z, self.slam_quaternion.w])
+            self.slam_orientation_rad = Point(self.slam_orientation_rad_list[0], self.slam_orientation_rad_list[1],
+                                              self.slam_orientation_rad_list[2])
+
+    def intersect_lines(self, p_beg, p_end):
+        """P0 and P1 are NxD arrays defining N lines (start and end point).
+        D is the dimension of the space. This function
+        returns the least squares intersection of the N
+        lines from the system.
+
+        reference: equation 13 in
+        http://cal.cs.illinois.edu/~johannes/research/LS_line_intersect.pdf.
+        """
+        # generate all line direction vectors
+        n = (p_end - p_beg) / np.linalg.norm(p_end - p_beg, axis=1)[:, np.newaxis]  # normalized
+
+        # generate the array of all projectors
+        projectors = np.eye(n.shape[1]) - n[:, :, np.newaxis] * n[:, np.newaxis]  # I - n*n.T
+        # see fig. 1
+
+        # generate R matrix and q vector
+        R = projectors.sum(axis=0)
+        q = (np.dot(projectors, p_beg[:, :, np.newaxis])).sum(axis=0)
+        # q = (projs @ P0[:, :, np.newaxis]).sum(axis=0)    # python 3
+
+        # solve the least squares problem for the
+        # intersection point p: Rp = q
+        intersection = np.linalg.lstsq(R, q, rcond=None)[0]
+        return intersection
+
+    def set_maker(self, id_marker, position, scale):
+        """ Set a marker in rviz with an id
+        the position is the center of the object and scale is its dimensions. e.g. scale.z = 1.0 is 1m height
+        """
+        marker = Marker()
+        marker.header.frame_id = "world"
+        marker.header.stamp = rospy.Time.now()
+        marker.ns = "tomato_plants"
+        marker.id = id_marker
+        marker.type = 3         # 0=ARROW, 1=CUBE, 2=SPHERE, 3=CYLINDER, 4=LINE_STRIP
+        marker.action = 0       # 0 = add/modify, 1 = (deprecated), 2 = delete, 3 = delete all
+        marker.pose.position.x = position.x
+        marker.pose.position.y = position.y
+        marker.pose.position.z = position.z
+        marker.pose.orientation.x = 0.0
+        marker.pose.orientation.y = 0.0
+        marker.pose.orientation.z = 0.0
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = scale.x
+        marker.scale.y = scale.y
+        marker.scale.z = scale.z
+        marker.color.a = 1.0    # alpha
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 0.0
+        self.pub_marker.publish(marker)
+        print("marker published")
+
+
+if __name__ == '__main__':
+    # Create controller
+    # start up the controller node and run until shutdown by interrupt
+    try:
+        localizer = PlantLocalizer()
+        """
+        while not rospy.is_shutdown():
+            #localizer.undistort_and_project(localizer.test, localizer.labels)
+            point = Point32()
+            point.x = 1.0
+            point.y = 1.0
+            scale = Scale()
+            localizer.set_maker(1, point, scale)
+            rospy.sleep(2)
+            print("slept")
+        """
+
+    except rospy.ROSInterruptException:
+        rospy.loginfo("Plant Localizer node terminated.")
