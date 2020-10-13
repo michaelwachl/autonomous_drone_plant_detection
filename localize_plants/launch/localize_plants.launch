@@ -9,8 +9,9 @@
   <!-- Load robot description -->
   <include file="$(find tello_description)/launch/description.launch" />
 
-  <!-- Start mono SLAM  -->
-  <node name="localize_plants_node" pkg="localize_plants" type="localize_plants_node" output="screen">      
+  <!-- Start localiye node  -->
+  <node name="localize_plants_node" pkg="localize_plants" type="localize_plants_node" output="screen"> 
+    <rosparam command="load" file="$(find localize_plants)/config/localize.yaml"/>     
   </node>
 
   <!-- Start Rviz -->

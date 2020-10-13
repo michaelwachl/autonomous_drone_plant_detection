@@ -11,15 +11,13 @@ from std_msgs.msg import String, Empty, Int8, Header
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import Image, ChannelFloat32
 from darknet_ros_msgs.msg import BoundingBox, BoundingBoxes, ObjectCount
+from sort_track.msg import TrackedBoundingBoxes
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from tf import TransformListener, LookupException, ConnectivityException, ExtrapolationException
 import tf.transformations as transformations
 from copy import deepcopy
-import math
 import numpy as np
 import cv2
-from yaml import load
-import rospkg
 
 
 class Scale:
@@ -28,28 +26,37 @@ class Scale:
     y = 1.0
     z = 1.0
 
+class TrackContainer:
+    """Container for all lines of tracked object"""
+    track_id = None
+    line_begin = []
+    line_end = []
+    class_id = None
+
+class AllContainer:
+    track_ids = []
+    containers = []
+
 
 class PlantLocalizer(object):
     """Controller to fly Tello in 3D coordinates"""
     def __init__(self):
-        # load parameter for calculation
-        try:
-            from yaml import CLoader as Loader
-        except ImportError:
-            from yaml import Loader
 
-        # get an instance of RosPack with the default search paths
-        rospack = rospkg.RosPack()
-        path = rospack.get_path('localize_plants')
+        # initialize ROS node
+        rospy.init_node('localize_plant_node', anonymous=True)
+        # get node name
+        self.ns_node = 'localize_plant/'  # rospy.get_namespace()
+        # Gets the necessary parameters from .yaml file
+        self.min_line_length = rospy.get_param("~min_line_length")
+        self.max_line_length = rospy.get_param("~max_line_length")
+        self.line_step = rospy.get_param("~line_step")
+        self.discard_margin = rospy.get_param("~discard_margin")     # in pixel
+        self.latency_image_position = rospy.get_param('~latency_image_position')
+        self.camera_matrix = rospy.get_param('~camera_matrix')
+        self.dist_coeffs = rospy.get_param('~distortion_coefficients')
 
-        with open(path+'/config/localize.yaml') as my_file:
-            parameter = load(my_file, Loader=Loader)
-        print("Params loaded: ", parameter)
-        self.min_line_length = parameter['min_line_length']
-        self.max_line_length = parameter['max_line_length']
-        self.line_step = parameter['line_step']
-        self.discard_margin = parameter['discard_margin']     # in pixel
-        self.latency_image_position = parameter['latency_image_position']
+        print(self.camera_matrix)
+
         # camera matrix for tello single cam
         """              f  x  0 
          camera_matrix = 0  f  y
@@ -58,9 +65,9 @@ class PlantLocalizer(object):
         f: focal length
         c: optical center     
         """
-        self.camera_matrix = np.array(parameter['camera_matrix']['data'], dtype=np.float32)
+        self.camera_matrix = np.array(self.camera_matrix['data'], dtype=np.float32)
         self.camera_matrix = self.camera_matrix.reshape((3, 3))
-        self.dist_coeffs = np.array(parameter['distortion_coefficients']['data'], dtype=np.float32)
+        self.dist_coeffs = np.array(self.dist_coeffs['data'], dtype=np.float32)
         print(self.camera_matrix)
         """
         # alternative camera parameters
@@ -70,10 +77,6 @@ class PlantLocalizer(object):
                                        
         self.dist_coeffs = np.array([-0.034749, 0.071514, 0.000363, 0.003131, 0.000000], dtype=np.float32)                             
         """
-        # initialize ROS node
-        rospy.init_node('localize_plant_node', anonymous=True)
-        # get node name
-        self.ns_node = 'localize_plant/'   # rospy.get_namespace()
 
         # define variables
         self.current_pose = PoseStamped()
