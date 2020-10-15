@@ -29,8 +29,8 @@ class Scale:
 class TrackContainer:
     """Container for all lines of tracked object"""
     track_id = None
-    line_begin = []
-    line_end = []
+    lines = []
+    count = 0
     class_id = None
 
 class AllContainer:
@@ -54,8 +54,10 @@ class PlantLocalizer(object):
         self.latency_image_position = rospy.get_param('~latency_image_position')
         self.camera_matrix = rospy.get_param('~camera_matrix')
         self.dist_coeffs = rospy.get_param('~distortion_coefficients')
+        self.min_number_lines = rospy.get_param('~min_number_lines')
+        self.create_pc = rospy.get_param('~create_pc')
 
-        print(self.camera_matrix)
+        #print(self.camera_matrix)
 
         # camera matrix for tello single cam
         """              f  x  0 
@@ -112,18 +114,22 @@ class PlantLocalizer(object):
         rospy.Subscriber(self.ns_tello+'odom', Odometry, self.cb_odom, queue_size=1)
         rospy.Subscriber(self.ns_darknet+'found_object', ObjectCount, self.cb_objects, queue_size=1)
         rospy.Subscriber(self.ns_darknet+'bounding_boxes', BoundingBoxes, self.cb_bounding_boxes, queue_size=1)
+        rospy.Subscriber('/sort_tracker/' + 'tracked_bounding_boxes', TrackedBoundingBoxes,
+                         self.cb_tracked_bounding_boxes, queue_size=1)
 
         self.pub_first_cloud = rospy.Publisher(self.ns_plant_loc + "label_one_cloud", PointCloud, queue_size=10)
         self.pub_second_cloud = rospy.Publisher(self.ns_plant_loc + "label_two_cloud", PointCloud, queue_size=10)
         self.pub_marker = rospy.Publisher('plant_marker', Marker, queue_size=10)
 
-        # container for
-        plant_locations = []
+        # containers for localizations
+        self.plant_locations = []
+        self.tracked_plant = TrackContainer()
+        self.tracked_plants = AllContainer()
 
         # invert camera matrix for projetion to 3D coordinates
         self.camera_matrix_inv = np.linalg.inv(self.camera_matrix)
 
-        self.test = np.zeros((3, 1, 2), dtype=np.float32)
+        self.test = np.zeros((3, 2), dtype=np.float32)
         self.test[0, :] = [486.99, 364.30]
         self.test[1, :] = [0.0, 0.0]
         self.test[2, :] = [600.0, 400.0]
@@ -131,6 +137,19 @@ class PlantLocalizer(object):
         print('init done')
         # keep process alive
         # rospy.spin()
+
+        # test intersection
+        p_beg = np.zeros((2, 3), dtype=np.float32)
+        p_end = np.zeros((2, 3), dtype=np.float32)
+
+        p_beg[0, :] = [0.0, 0.0, 0.0]
+        p_beg[1, :] = [2.0, 0.0, 0.0]
+
+        p_end[0, :] = [0.0, 3.0, 0.0]
+        p_end[1, :] = [-2.0, 4.0, 0.0]
+
+        intersection = self.intersect_lines(p_beg, p_end)
+        print(intersection)
 
     def get_transform_to_map(self):
         """try to transfrom from current points from camera frame to map frame
@@ -186,6 +205,9 @@ class PlantLocalizer(object):
         # map_points = np.dot(points, camera_to_map.T)
         # print('Map points: ', map_points)
         for i in range(len(labels)):
+
+
+            # generate and add pointcloud
             if labels[i] == 0:
                 for scale in np.arange(self.min_line_length, self.max_line_length, self.line_step):
                     # Compose with point to get pose in map frame
@@ -237,7 +259,6 @@ class PlantLocalizer(object):
 
     def filter_bounding_boxes(self, bounding_boxes):
         filtered_boxes = []
-        scales = []
         for box in bounding_boxes:
             #   --> x
             #   |
@@ -245,14 +266,12 @@ class PlantLocalizer(object):
             width = box.xmax-box.xmin
             height = box.ymax-box.ymin
             print('width: ', width, '   height: ', height)
-            # estimate scale
-            est_scale = self.estimate_scale(width, height)
             wth_ratio = width/height
             if self.min_wth_ratio < wth_ratio < self.max_wth_ratio:
                 filtered_boxes.append(box)
             else:
                 print('box was filtered')
-        return filtered_boxes, scales
+        return filtered_boxes
 
     def cb_bounding_boxes(self, msg):
         print('bounding box received')
@@ -261,6 +280,18 @@ class PlantLocalizer(object):
             # get time of image of detection for correct time stamp
             image_time = msg.image_header.stamp
             filtered_boxed, scale_est = self.filter_bounding_boxes(msg.bounding_boxes)
+            if len(filtered_boxed) > 0:
+                center_points, labels, time = self.calculate_center_points(filtered_boxed)
+                print("Center points pixel: ", center_points, "  Labels: ", labels)
+                self.undistort_and_project(center_points, labels, image_time)
+
+    def cb_tracked_bounding_boxes(self, msg):
+        print('bounding box received')
+        if len(msg.bounding_boxes) > 0:
+            self.bounding_box_time = msg.header.stamp
+            # get time of image of detection for correct time stamp
+            image_time = msg.bounding_boxes.image_header.stamp
+            # filtered_boxed, scale_est = self.filter_bounding_boxes(msg.bounding_boxes)
             if len(filtered_boxed) > 0:
                 center_points, labels, time = self.calculate_center_points(filtered_boxed)
                 print("Center points pixel: ", center_points, "  Labels: ", labels)
@@ -299,15 +330,16 @@ class PlantLocalizer(object):
         """
         # generate all line direction vectors
         n = (p_end - p_beg) / np.linalg.norm(p_end - p_beg, axis=1)[:, np.newaxis]  # normalized
+        #n = (p_end - p_beg) / np.linalg.norm(p_end - p_beg)
+        #print("direction vectors: ", n, " shape: ", n.shape)
 
         # generate the array of all projectors
         projectors = np.eye(n.shape[1]) - n[:, :, np.newaxis] * n[:, np.newaxis]  # I - n*n.T
-        # see fig. 1
+        print("projectors: ", projectors, ' shape: ', projectors.shape)
 
         # generate R matrix and q vector
         R = projectors.sum(axis=0)
-        q = (np.dot(projectors, p_beg[:, :, np.newaxis])).sum(axis=0)
-        # q = (projs @ P0[:, :, np.newaxis]).sum(axis=0)    # python 3
+        q = (np.matmul(projectors, p_beg[:, :, np.newaxis])).sum(axis=0)
 
         # solve the least squares problem for the
         # intersection point p: Rp = q

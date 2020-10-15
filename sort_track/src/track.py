@@ -28,7 +28,7 @@ class YoloTracker(object):
 		self.show_image = rospy.get_param("~show_image")
 		self.camera_topic = rospy.get_param("~camera_topic")
 		self.detection_topic = rospy.get_param("~detection_topic")
-		self.tracker_topic = rospy.get_param('~tracker_topic')
+		self.tracker_topic = rospy.get_param('~tracked_bounding_boxes')
 		self.cost_threshold = rospy.get_param('~cost_threhold')
 		self.min_hits = rospy.get_param('~min_hits')
 		self.max_age = rospy.get_param('~max_age')
