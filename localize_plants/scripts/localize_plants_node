@@ -28,9 +28,8 @@ class Scale:
 
 class TrackContainer:
     """Container for all lines of tracked object"""
-    track_id = None
-    lines = []
-    count = 0
+    begin_pts = []
+    end_pts = []
     class_id = None
 
 class AllContainer:
@@ -171,7 +170,7 @@ class PlantLocalizer(object):
             print('No Position Data available', e)
         return None
 
-    def undistort_and_project(self, uv_pts, labels):
+    def undistort_and_project(self, uv_pts):
         """Converts 2D pixel images points to the spherical coordinate system.
         First pixel coordinates are undistorted with calibration matrix and distortion coefficiants.
         Inverse matrix of Intrinsics of camera are taken into account to transform into cartesian vertices and
@@ -192,11 +191,14 @@ class PlantLocalizer(object):
         # transform to homogeneous coordinates, add 1 row
         xyz_pts_h = cv2.convertPointsToHomogeneous(np.float32(xyz_pts))
         xyz_pts_h.shape = (num_pts, 4)
-        self.calculate_and_add_lines(xyz_pts_h, labels)
 
-    def calculate_and_add_lines(self, points, labels, time):
+        return xyz_pts_h
+
+    def calculate_and_add_lines(self, points, labels, time_im):
+        if not self.create_pc:
+            return
         # get current transformation
-        camera_to_map = self.get_transform_to_map(time)
+        camera_to_map = self.get_transform_to_map(time_im)
         # print('Transformation matrix: ', camera_to_map)
         if camera_to_map is None:
             print("Transform not possible")
@@ -205,9 +207,7 @@ class PlantLocalizer(object):
         # map_points = np.dot(points, camera_to_map.T)
         # print('Map points: ', map_points)
         for i in range(len(labels)):
-
-
-            # generate and add pointcloud
+            # generate and add point cloud
             if labels[i] == 0:
                 for scale in np.arange(self.min_line_length, self.max_line_length, self.line_step):
                     # Compose with point to get pose in map frame
@@ -228,11 +228,47 @@ class PlantLocalizer(object):
                     self.line_point.y = point_in_map[1]
                     self.line_point.z = point_in_map[2]
                     self.second_pointcould.points.append(deepcopy(self.line_point))
-
         # publish pointclouds
         self.pub_first_cloud.publish(self.first_pointcould)
         self.pub_second_cloud.publish(self.second_pointcould)
         print('New lines published')
+
+    def add_to_container(self, xyz_h, track_ids, time_im):
+        # get current transformation
+        camera_to_map = self.get_transform_to_map(time_im)
+        # print('Transformation matrix: ', camera_to_map)
+        if camera_to_map is None:
+            print("Transform not possible")
+            return
+
+        line_begin_pts = np.array(np.dot(xyz_h, camera_to_map.T))
+        line_end_pts = np.array(np.dot((self.max_line_length*xyz_h), camera_to_map.T))
+        # iterate and save points
+        for i in len(line_begin_pts):
+            if track_ids[i] in self.tracked_plants.track_ids:
+                # get index
+                index = self.tracked_plants.track_ids.index(track_ids[i])
+                # append line
+                self.tracked_plants.containers[index].begin_pts.append(line_begin_pts[i])
+                self.tracked_plants.containers[index].end_pts.append(line_end_pts[i])
+                print('Point added to id: ', track_ids[i])
+            else:
+                # create plant
+                plant = TrackContainer()
+                plant.begin_pts.append(line_begin_pts[i])
+                plant.end_pts.append(line_end_pts[i])
+                self.tracked_plants.track_ids.append(track_ids[i])
+                self.tracked_plants.containers.append(deepcopy(plant))
+                print('New plant added')
+
+    def update_locations(self):
+        for plant in self.tracked_plants.containers:
+            if len(plant.begin_pts) > self.min_number_lines:
+                # intersect
+                intersecton = self.intersect_lines(plant.begin_pts, plant.end_pts)
+                print('intersection point: ', intersecton)
+
+
 
     def calculate_center_points(self, bounding_boxes):
         center_points = np.zeros((len(bounding_boxes), 1, 2), dtype=np.float32)
@@ -249,7 +285,7 @@ class PlantLocalizer(object):
             labels.append(box.id)
             i += 1
 
-        return center_points, labels, time
+        return center_points, labels
 
     def cb_objects(self, msg):
         object_number = msg.count
@@ -279,23 +315,32 @@ class PlantLocalizer(object):
             self.bounding_box_time = msg.header.stamp
             # get time of image of detection for correct time stamp
             image_time = msg.image_header.stamp
-            filtered_boxed, scale_est = self.filter_bounding_boxes(msg.bounding_boxes)
+            filtered_boxed = self.filter_bounding_boxes(msg.bounding_boxes)
             if len(filtered_boxed) > 0:
-                center_points, labels, time = self.calculate_center_points(filtered_boxed)
+                center_points, labels = self.calculate_center_points(filtered_boxed)
                 print("Center points pixel: ", center_points, "  Labels: ", labels)
-                self.undistort_and_project(center_points, labels, image_time)
+                xyz_h = self.undistort_and_project(center_points)
+                # add lines to point cloud
+                self.calculate_and_add_lines(xyz_h, labels, image_time)
 
     def cb_tracked_bounding_boxes(self, msg):
+        global refresh_locations
         print('bounding box received')
         if len(msg.bounding_boxes) > 0:
             self.bounding_box_time = msg.header.stamp
             # get time of image of detection for correct time stamp
             image_time = msg.bounding_boxes.image_header.stamp
             # filtered_boxed, scale_est = self.filter_bounding_boxes(msg.bounding_boxes)
-            if len(filtered_boxed) > 0:
-                center_points, labels, time = self.calculate_center_points(filtered_boxed)
-                print("Center points pixel: ", center_points, "  Labels: ", labels)
-                self.undistort_and_project(center_points, labels, image_time)
+            center_points, labels = self.calculate_center_points(msg.bounding_boxes)
+            print("Center points pixel: ", center_points, "  Labels: ", labels)
+            xyz_h = self.undistort_and_project(center_points, image_time)
+            self.add_to_container(xyz_h, msg.track_ids)
+            refresh_locations += 1
+            if refresh_locations > 10:
+                self.update_locations()
+                refresh_locations = 0
+
+
 
     def cb_odom(self, msg):
         # print('odom callback')
