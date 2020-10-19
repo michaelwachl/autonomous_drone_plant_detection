@@ -14,16 +14,21 @@ Communicating with the Tello drone can be done either using official [Tello SDK]
 
 Developing of the tello_driver ROS package is inspired by [tello_driver](https://github.com/anqixu/tello_driver) and [tello_driver](https://github.com/appie-17/tello_driver), which by now diverged considerately from the original work. Furthermore, development of this ROS package pursues not to modify the TelloPy library, but instead apply any modification or addition to the ros_driver package in an encapsulated manner. This prevents breaking functionalities when updating the TelloPy library. The following changes were made to [tello_driver](https://github.com/appie-17/tello_driver):  
 * Take and save fotos locally through "take_picture" topic
-* Publish decoded video strem on "tello/camera/image_raw"
+* Publish decoded video stream on "tello/camera/image_raw"
 * Topic "tello/exposure" to set exposure
 * Topic "tello/video_wide" to set video format 
 * Topic "tello/encoder_rate" to set encoder rate
+* Topics for connection and drone states between GUI and tello driver
+* Odometrie publish "tello/odom"
+* Timed odometrie reset for jump after takeoff
+* TelloStatus message extended
+* Cmakelist and code changes to run on Linux Melodic
 
 
 ## Installation
 
 ### Build from source
-* ```$ git clone --recursive https://github.com/appie-17/tello_driver.git```
+* ```$ git clone --recursive https://github.com/michaelwachl/autonomous_drone_plant_detection/tello_driver.git```
 * ```$ cd ..```
 * ```$ catkin_make```
 * ```$ source devel/setup.bash```
@@ -49,7 +54,15 @@ Main node running as interface for the TelloPy library
 * ```/tello/palm_land``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
 * ```/tello/takeoff``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
 * ```/tello/manual_takeoff``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
-* ```/tello/throw_takeoff``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
+* ```/tello/throw_takeoff``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)  
+added:
+* ```/tello/take_picture``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
+* ```/tello/connect``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
+* ```/tello/disconnect``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
+* ```/tello/exposure``` [std_msgs/Uint8](http://docs.ros.org/api/std_msgs/html/msg/UInt8.html)
+* ```/tello/encoder_rate``` [std_msgs/Uint8](http://docs.ros.org/api/std_msgs/html/msg/UInt8.html)
+* ```/tello/video_wide``` [std_msgs/Bool](http://docs.ros.org/en/api/std_msgs/html/msg/Bool.html)
+
 
 ### Published topics
 * ```/tello/camera/camera_info``` [sensor_msgs/CameraInfo](http://docs.ros.org/api/sensor_msgs/html/msg/CameraInfo.html)
@@ -57,7 +70,11 @@ Main node running as interface for the TelloPy library
 * ```/tello/imag/raw/h264``` [h264_image_transport/H264Packet](https://github.com/tilk/h264_image_transport/blob/master/msg/H264Packet.msg)
 * ```/tello/odom``` [nav_msgs/Odometry](http://docs.ros.org/api/nav_msgs/html/msg/Odometry.html)
 * ```/tello/imu``` [sensor_msgs/Imu](http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html)
-* ```/tello/status``` [tello_driver/TelloStatus](https://github.com/appie-17/tello_driver/blob/development/msg/TelloStatus.msg)
+* ```/tello/status``` [tello_driver/TelloStatus](https://github.com/appie-17/tello_driver/blob/development/msg/TelloStatus.msg)  
+added: 
+* ```/tello/camera/image_raw``` [sensor_msgs/Image](http://docs.ros.org/api/sensor_msgs/html/msg/Image.html)
+* ```/tello/camera/picture_update``` [std_msgs/String](http://docs.ros.org/en/api/std_msgs/html/msg/String.html)
+* ```/tello/camera/connection_state``` [std_msgs/String](http://docs.ros.org/en/api/std_msgs/html/msg/String.html)
 
 ### Parameters
 * ```~/tello_driver_node/connect_timeout_sec```
@@ -119,5 +136,9 @@ None
    
    ```$ sudo add-apt-repository ppa:jonathonf/ffmpeg-3```  
    ```$ sudo apt update && sudo apt install ffmpeg```  
+     
+  **Stream Raw**  
+  Now doesen't depend on PyAV and is published with image_transport in the launch-file tell_node.launch
+  
 
 
