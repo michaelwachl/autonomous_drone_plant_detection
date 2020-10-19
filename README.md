@@ -43,6 +43,29 @@ Introduction
 
 Getting Started
 ===============
+This run this project several packages need to be downloaded and installed.
+```
+git clone --recursive mygit
+```
+The minimum required packages are:
+- [tello_driver](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_driver)
+- [tello_description](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_description)
+- [tello_controller](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_controller)
+- [tello_rqt_gui](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_rqt_gui)
+- [YOLOv4](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_driver)
+- [orbslam2](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_driver)
+- [localize_plants](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/localize_plants)
+- [pointcloud_editor](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/pointcloud_editor)
+- [sort_track](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/sort_track)
+
+Visit each package for further instructions and explanations. 
+
+To compile them run:
+```
+caktin_make
+```
+in from your workspace folder in your terminal. 
+
 
 Useful Websites
 ----------------
