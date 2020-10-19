@@ -1,18 +1,28 @@
-# tello_driver [![Build Status](http://build.ros.org/job/Ksrc_uX__tello_driver__ubuntu_xenial__source/badge/icon)](http://build.ros.org/job/Ksrc_uX__tello_driver__ubuntu_xenial__source/)
+# tello_driver 
+
+**Reference and credits to:**  
+* [ROS Tello Driver](http://wiki.ros.org/tello_driver)
+* [tello_driver](https://github.com/anqixu/tello_driver)
+* [tello_driver](https://github.com/appie-17/tello_driver)
+* [TelloPy](https://github.com/hanyazou/TelloPy)
+
 
 # 1. Overview
+This package is forked and extended from [tello_driver](https://github.com/appie-17/tello_driver).  
+
 Communicating with the Tello drone can be done either using official [Tello SDK](https://dl-cdn.ryzerobotics.com/downloads/Tello/Tello%20SDK%202.0%20User%20Guide.pdf) or one of the unofficial libraries. The unofficial libraries originated from the reverse-engineering the raw packages broadcasted by the Tello. This ROS package is build on top of the unofficial [TelloPy](https://github.com/hanyazou/TelloPy) library. The [TelloPy](https://github.com/hanyazou/TelloPy) library is used at this moment since it offers more functionalities than the official [Tello SDK](https://dl-cdn.ryzerobotics.com/downloads/Tello/Tello%20SDK%202.0%20User%20Guide.pdf) or any other unofficial library. 
 
-Developing of the tello_driver ROS package is inspired by [tello_driver](https://github.com/anqixu/tello_driver), which by now diverged considerately from the original work. Furthermore, development of this ROS package pursues not to modify the TelloPy library, but instead apply any modification or addition to the ros_driver package in an encapsulated manner. This prevents breaking functionalities when updating the TelloPy library.
+Developing of the tello_driver ROS package is inspired by [tello_driver](https://github.com/anqixu/tello_driver) and [tello_driver](https://github.com/appie-17/tello_driver), which by now diverged considerately from the original work. Furthermore, development of this ROS package pursues not to modify the TelloPy library, but instead apply any modification or addition to the ros_driver package in an encapsulated manner. This prevents breaking functionalities when updating the TelloPy library. The following changes were made to [tello_driver](https://github.com/appie-17/tello_driver):  
+* Take and save fotos locally through "take_picture" topic
+* Publish decoded video strem on "tello/camera/image_raw"
+* Topic "tello/exposure" to set exposure
+* Topic "tello/video_wide" to set video format 
+* Topic "tello/encoder_rate" to set encoder rate
+
 
 ## Installation
 
-### ROS distribution  
-Binary release from the ROS repository:  
-* Kinetic: ``` $ sudo apt install ros-kinetic-tello-driver```
-
 ### Build from source
-* ```$ cd <CATKIN_WS/SRC>```
 * ```$ git clone --recursive https://github.com/appie-17/tello_driver.git```
 * ```$ cd ..```
 * ```$ catkin_make```
@@ -23,7 +33,6 @@ Binary release from the ROS repository:
 * Turn on Tello drone
 * Connect to drone's WiFi access point (```TELLO_XXXXXX)```
 * ```$ roslaunch tello_driver tello_node.launch```
-* ```$ roslaunch tello_driver joy_teleop.launch```
 
 # 2. Nodes
 
@@ -49,9 +58,6 @@ Main node running as interface for the TelloPy library
 * ```/tello/odom``` [nav_msgs/Odometry](http://docs.ros.org/api/nav_msgs/html/msg/Odometry.html)
 * ```/tello/imu``` [sensor_msgs/Imu](http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html)
 * ```/tello/status``` [tello_driver/TelloStatus](https://github.com/appie-17/tello_driver/blob/development/msg/TelloStatus.msg)
-
-### Services
-TODO
 
 ### Parameters
 * ```~/tello_driver_node/connect_timeout_sec```
@@ -85,9 +91,6 @@ Converting gamepad input controls from ```joy_node``` to commands for ```tello_d
 * ```/tello/takeoff``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
 * ```/tello/throw_takeoff``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
 
-### Services
-None
-
 ### Parameters
 
 ## 2.3 joy_node
@@ -99,8 +102,6 @@ None
 ### Published topics
 * ```/joy``` [sensor_msgs/Joy](http://docs.ros.org/api/sensor_msgs/html/msg/Joy.html)
 
-### Services
-None 
 
 ### Parameters
 * ```~/joy_node/deadzone```
@@ -118,9 +119,5 @@ None
    
    ```$ sudo add-apt-repository ppa:jonathonf/ffmpeg-3```  
    ```$ sudo apt update && sudo apt install ffmpeg```  
-
-# 5. Work-in-progress
-
-# 6. License
 
 
