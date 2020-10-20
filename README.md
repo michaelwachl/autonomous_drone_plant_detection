@@ -48,6 +48,13 @@ This run this project several packages need to be downloaded and installed.
 ```
 git clone --recursive mygit
 ```
+
+To compile them run:
+```
+caktin_make
+```
+in from your workspace folder in your terminal.  
+
 The minimum required packages are:
 - [tello_driver](tello_driver) Used for communication with drone
 - [tello_description](tello_description)  Used for visualization and links of drone
@@ -66,11 +73,20 @@ Some other useful packages are:
 
 Visit each package for further instructions and explanations. 
 
-To compile them run:
-```
-caktin_make
-```
-in from your workspace folder in your terminal. 
+Prerequisites and Installing
+----------------------------
+
+#### Tested on System
+* Linux Ubuntu 18.04.4 LTS
+* ROS Melodic
+* Python 2.7
+* [python_qt_binding](https://github.com/ros-visualization/python_qt_binding) (Qt 5)
+
+#### Python Packages
+If you used miniconda for your environment you don't need to pip install libaries like numpy, qt, pyqt.
+All packages should be covered by creation. 
+
+In this project the following packages are used:
 
 
 Wiki
@@ -81,33 +97,6 @@ Useful Websites
 ----------------
 
 
-Prerequisites and Installing
-----------------------------
-
-#### Tested on System
-* Linux Ubuntu 18.04.4 LTS
-* ROS Melodic
-* Python 2.7
-* [python_qt_binding](https://github.com/ros-visualization/python_qt_binding) (Qt 5)
-
-
-#### ROS Packages
-You need to install the following ROS-Packages:
-*  [libuvc_camera](https://wiki.ros.org/libuvc_camera)
-*  [joy](https://wiki.ros.org/joy)
-
-Open your terminal and install the following packages to your environment:  
-The ROS [libuvc_camera](https://wiki.ros.org/libuvc_camera) package for the camera drivers
-```
-sudo apt-get install ros-melodic-libuvc-camera
-```
-The ROS [joy](https://wiki.ros.org/joy) package joystick drivers 
-
-#### Python Packages
-If you used miniconda for your environment you don't need to pip install libaries like numpy, qt, pyqt.
-All packages should be covered by creation. 
-
-In this project the following packages are used:
 
 
 Flybot GUI
