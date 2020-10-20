@@ -1,10 +1,10 @@
-# teleop_twist_keyboard
-Generic Keyboard Teleop for ROS
+# tello_keyboard_teleop
+Generic Keyboard Teleop for the Tello drone in ROS
 
 # Launch
 Run.
 ```
-rosrun teleop_twist_keyboard teleop_twist_keyboard.py
+rosrun tello_keyboard_teleop tello_keyboard_teleop.py
 ```
 
 With custom values.
@@ -12,10 +12,6 @@ With custom values.
 rosrun teleop_twist_keyboard teleop_twist_keyboard.py _speed:=0.9 _turn:=0.8
 ```
 
-Publishing to a different topic (in this case `my_cmd_vel`).
-```
-rosrun teleop_twist_keyboard teleop_twist_keyboard.py cmd_vel:=my_cmd_vel
-```
 
 # Usage
 ```
