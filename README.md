@@ -27,14 +27,13 @@ Table of contents
    * [Table of contents](#table-of-contents)
    * [Introduction](#introduction)
    * [Getting Started](#getting-started)
+      * [Prerequisites and Installing](#prerequisites-and-installing)
       * [Project Wiki](#wiki)
       * [Useful Websites](#useful-websites)
-      * [Using Virtual Environment with ROS](#using-virtual-environment-with-ros)
-      * [Prerequisites and Installing](#prerequisites-and-installing)
    * [Flybot GUI](#flybot-gui)
    * [Authors](#authors)
-   * [License](#license)
    * [Similar Projects](#similar-projects)
+   * [License](#license)
    * [Notes](#notes)
 <!--te-->
 
@@ -106,7 +105,7 @@ Flybot GUI
 Authors
 =======
 
-* **Michael Wachl** - 
+* **Michael Wachl**
 
 
 License
