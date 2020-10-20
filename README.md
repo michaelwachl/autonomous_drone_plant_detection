@@ -27,6 +27,7 @@ Table of contents
    * [Table of contents](#table-of-contents)
    * [Introduction](#introduction)
    * [Getting Started](#getting-started)
+      * [Project Wiki](#wiki)
       * [Useful Websites](#useful-websites)
       * [Using Virtual Environment with ROS](#using-virtual-environment-with-ros)
       * [Prerequisites and Installing](#prerequisites-and-installing)
@@ -66,6 +67,10 @@ caktin_make
 ```
 in from your workspace folder in your terminal. 
 
+
+Wiki
+-----
+For instruction on how to set up your machine, CUDA, Darknet and other useful tip visit the [Wiki](https://github.com/michaelwachl/autonomous_drone_plant_detection/wiki) of this project. 
 
 Useful Websites
 ----------------
