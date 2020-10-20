@@ -62,13 +62,13 @@ caktin_make
 in from your workspace folder in your terminal.  
 
 The minimum required packages are:
-- [tello_driver](tello_driver) Used for communication with drone
-- [tello_description](tello_description)  Used for visualization and links of drone
+- [tello_driver](tello_driver) Used for communication with drone (forked and extended)
+- [tello_description](tello_description)  Used for visualization and links of drone (forked and extended)
 - [tello_controller](/tello_controller) Used to do missions and position control
 - [tello_rqt_gui](tello_rqt_gui)  Used to send commands, shoot videos and fotos display states
-- [darknet_ros_yolov4](darknet_ros_yolov4) Used to do detection of tomato plants and output bounding boxes
-- [sort_track](sort_track) Used to track objects/bounding boxes
-- [orb_slam_2_ros](orb_slam_2_ros) Used to map environment, output point cloud and pose estimation
+- [darknet_ros_yolov4](darknet_ros_yolov4) Used to do detection of tomato plants and output bounding boxes (forked and extended)
+- [sort_track](sort_track) Used to track objects/bounding boxes (forked and extended)
+- [orb_slam_2_ros](orb_slam_2_ros) Used to map environment, output point cloud and pose estimation (forked and extended)
 - [localize_plants](localize_plants)  Used to calculate plant location with bonding box and/or point cloud
 - [pointcloud_editor](pointcloud_editor) Used to process point cloud
 
@@ -92,16 +92,21 @@ Prerequisites and Installing
 If you used miniconda for your environment you don't need to pip install libaries like numpy, qt, pyqt.
 All packages should be covered by creation. 
 
-In this project the following packages are used:
-
 
 Wiki
 -----
 For instruction on how to set up your machine, CUDA, Darknet and other useful tip visit the [Wiki](https://github.com/michaelwachl/autonomous_drone_plant_detection/wiki) of this project. 
 
+
 Useful Websites
 ----------------
+#### Tello
 
+#### SLAM
+
+#### Object Detection
+
+#### Object Tracking
 
 
 
@@ -118,7 +123,7 @@ Authors
 License
 =======
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details
 
 Acknowledgments
 ===============
@@ -139,6 +144,4 @@ Notes
 In Empy may be missing, install it
 ========================================================================
 pip install empy
-
-
 
