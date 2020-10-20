@@ -49,7 +49,7 @@ This run this project several packages need to be downloaded and installed.
 git clone --recursive mygit
 ```
 The minimum required packages are:
-- [tello_driver](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_driver)
+- [tello_driver](/tello_driver)
 - [tello_description](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_description)
 - [tello_controller](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_controller)
 - [tello_rqt_gui](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_rqt_gui)
@@ -74,40 +74,6 @@ For instruction on how to set up your machine, CUDA, Darknet and other useful ti
 
 Useful Websites
 ----------------
-
-
-Using Virtual Environment with ROS
-----------------------------------
-
-You can used ROS also in a virtual environment.
-
-1. Install Miniconda with Python 2.7 and create your environment
-
-[https://docs.conda.io/en/latest/miniconda.html](url)
-
-
-2. Add your miniconda export PATH and activation to your .bashrc file
-```
-export PATH="/home/tello18/miniconda2/bin:$PATH"
-```
-```
-source activate YOUR_ENV
-```
-
-
-3. Source the packages
-```
-source devel/setup.bash
-```
-
-The source command needs to be done everytime you open a new terminal, because it's outside of .bashrc.
-If you add it to your .bashrc file the virtual environment won't work. Let me know if there is a other solution.
-You may need to install additional packages like catkin_pkg with `pip install rospkg catkin_pkg`
-For more information read:  
-[https://github.com/ros-infrastructure/rep/blob/master/rep-0008.rst](url)  
-[http://docs.ros.org/jade/api/catkin/html/howto/format2/installing_python.html](url)  
-[https://medium.com/codeda/ros-run-python-in-virtual-env-8c579304b9c9](url)  
-[https://answers.ros.org/question/285483/running-ros-in-a-tensorflow-virtual-environment/](url)
 
 
 Prerequisites and Installing
