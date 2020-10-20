@@ -1,6 +1,9 @@
 Flybot: Autonomous Plant Detection and Localization on a Micro-Drone
 ============================
 
+![alt text](doc/tello_with_sensor.png)
+
+
 This Project is about autonomous navigation of an micro aerial vehicle (MAV) and part of my master thesis.
 The micro drone [Tello EDU](https://www.ryzerobotics.com/de/tello-edu) is used and controlled in ROS with a remote PC.
 
@@ -18,7 +21,11 @@ The micro drone [Tello EDU](https://www.ryzerobotics.com/de/tello-edu) is used a
 - [ ] Object localization with YOLOv4 bounding box
 - [ ] Object localization with pointclould and bounding box
 - [ ] Plausability check and other tests
-
+  - [ ] Position drift hover, circle path with odom and slam position
+  - [ ] Bounding box 3D lines
+  - [ ] Size of training set
+  - [ ] Miss or no detections of a video sequenz
+  - [ ] Induce erros
 
 Table of contents
 =================
