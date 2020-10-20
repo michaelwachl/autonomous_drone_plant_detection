@@ -49,15 +49,20 @@ This run this project several packages need to be downloaded and installed.
 git clone --recursive mygit
 ```
 The minimum required packages are:
-- [tello_driver](/tello_driver)
-- [tello_description](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_description)
-- [tello_controller](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_controller)
-- [tello_rqt_gui](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_rqt_gui)
-- [YOLOv4](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_driver)
-- [orbslam2](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/tello_driver)
-- [localize_plants](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/localize_plants)
-- [pointcloud_editor](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/pointcloud_editor)
-- [sort_track](https://github.com/michaelwachl/autonomous_drone_plant_detection/tree/master/sort_track)
+- [tello_driver](tello_driver) Used for communication with drone
+- [tello_description](tello_description)  Used for visualization and links of drone
+- [tello_controller](/tello_controller) Used to do missions and position control
+- [tello_rqt_gui](tello_rqt_gui)  Used to send commands, shoot videos and fotos display states
+- [darknet_ros_yolov4](darknet_ros_yolov4) Used to do detection of tomato plants and output bounding boxes
+- [sort_track](sort_track) Used to track objects/bounding boxes
+- [orb_slam_2_ros](orb_slam_2_ros) Used to map environment, output point cloud and pose estimation
+- [localize_plants](localize_plants)  Used to calculate plant location with bonding box and/or point cloud
+- [pointcloud_editor](pointcloud_editor) Used to process point cloud
+
+
+Some other useful packages are:
+- [environment_sensor](environment_sensor) Used to connect with sensor and publish sensor data
+- [environment_sensor_plot](environment_sensor_plot) Used to create plots of sensor data
 
 Visit each package for further instructions and explanations. 
 
