@@ -10,7 +10,7 @@ queue_size: 1
 detection_topic: "/darknet_ros/bounding_boxes"
 
 # Set your output topic here
-tracker_topic: "/sort_track"
+tracker_topic: "/sort_tracker/tracked_bounding_boxes"
 
 # Threshold for Costs between detections and tracks
 cost_threhold: 15

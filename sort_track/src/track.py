@@ -28,10 +28,12 @@ class YoloTracker(object):
 		self.show_image = rospy.get_param("~show_image")
 		self.camera_topic = rospy.get_param("~camera_topic")
 		self.detection_topic = rospy.get_param("~detection_topic")
-		self.tracker_topic = rospy.get_param('~tracked_bounding_boxes')
+		self.tracker_topic = rospy.get_param('~tracker_topic')
 		self.cost_threshold = rospy.get_param('~cost_threhold')
 		self.min_hits = rospy.get_param('~min_hits')
 		self.max_age = rospy.get_param('~max_age')
+
+		self.msg = TrackedBoundingBoxes()
 
 		global tracker
 		tracker = sort.Sort(max_age=self.max_age, min_hits=self.min_hits)
@@ -41,6 +43,8 @@ class YoloTracker(object):
 		self.sub_detection = rospy.Subscriber(self.detection_topic, BoundingBoxes, self.callback_det)
 		# Publish results of object tracking
 		self.pub_trackers = rospy.Publisher(self.tracker_topic, TrackedBoundingBoxes, queue_size=10)
+		# keep process alive
+		rospy.spin()
 
 
 	def callback_det(self, data):
@@ -51,7 +55,8 @@ class YoloTracker(object):
 		trackers = []
 		track = []
 		ids = []
-		msg.bounding_boxes = data.bounding_boxes
+		self.msg.bounding_boxes = data
+
 		for box in data.bounding_boxes:
 			detections.append(np.array([box.xmin, box.ymin, box.xmax, box.ymax, round(box.probability, 2), box.id]))
 		detections = np.array(detections)
@@ -63,7 +68,8 @@ class YoloTracker(object):
 		for tra in track:
 			ids.append(tra[4])
 
-		msg.track_ids = ids
+		self.msg.track_ids = ids
+		self.pub_trackers.publish(self.msg)
 
 
 	def callback_image(self, data):
@@ -92,20 +98,18 @@ def main():
 	rospy.init_node('sort_tracker', anonymous=False)
 
 	global tracker
-	global msg
-	msg = TrackedBoundingBoxes()
 
 	# Create tracker object
 	tracker_yolo = YoloTracker()
 	rate = rospy.Rate(tracker_yolo.loop_rate)
-
+	"""
 	while not rospy.is_shutdown():
 		# Publish tracket objects
 		tracker_yolo.pub_trackers.publish(msg)
 		print(msg)
 		rate.sleep()
 		#rospy.spin()
-
+	"""
 
 if __name__ == '__main__':
 	try:

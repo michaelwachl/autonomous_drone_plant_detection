@@ -46,6 +46,7 @@ class PlantLocalizer(object):
         # get node name
         self.ns_node = 'localize_plant/'  # rospy.get_namespace()
         # Gets the necessary parameters from .yaml file
+        self.latency = rospy.get_param("~latency")
         self.min_line_length = rospy.get_param("~min_line_length")
         self.max_line_length = rospy.get_param("~max_line_length")
         self.line_step = rospy.get_param("~line_step")
@@ -113,14 +114,14 @@ class PlantLocalizer(object):
         rospy.Subscriber(self.ns_tello+'odom', Odometry, self.cb_odom, queue_size=1)
         rospy.Subscriber(self.ns_darknet+'found_object', ObjectCount, self.cb_objects, queue_size=1)
         rospy.Subscriber(self.ns_darknet+'bounding_boxes', BoundingBoxes, self.cb_bounding_boxes, queue_size=1)
-        rospy.Subscriber('/sort_tracker/' + 'tracked_bounding_boxes', TrackedBoundingBoxes,
-                         self.cb_tracked_bounding_boxes, queue_size=1)
+        rospy.Subscriber('/sort_tracker/tracked_bounding_boxes', TrackedBoundingBoxes, self.cb_tracked_bounding_boxes, queue_size=1)
 
         self.pub_first_cloud = rospy.Publisher(self.ns_plant_loc + "label_one_cloud", PointCloud, queue_size=10)
         self.pub_second_cloud = rospy.Publisher(self.ns_plant_loc + "label_two_cloud", PointCloud, queue_size=10)
         self.pub_marker = rospy.Publisher('plant_marker', Marker, queue_size=10)
 
         # containers for localizations
+        self.refresh_locations = 0
         self.plant_locations = []
         self.tracked_plant = TrackContainer()
         self.tracked_plants = AllContainer()
@@ -135,7 +136,7 @@ class PlantLocalizer(object):
         self.labels = [0, 1, 0]
         print('init done')
         # keep process alive
-        # rospy.spin()
+        rospy.spin()
 
         # test intersection
         p_beg = np.zeros((2, 3), dtype=np.float32)
@@ -150,13 +151,15 @@ class PlantLocalizer(object):
         intersection = self.intersect_lines(p_beg, p_end)
         print(intersection)
 
-    def get_transform_to_map(self):
+    def get_transform_to_map(self, img_time):
         """try to transfrom from current points from camera frame to map frame
         """
         try:
             self.pos_listener.waitForTransform('map', 'camera_frame', rospy.Time(), rospy.Duration(10))
-            lookup_time = rospy.Time.now() - rospy.Duration(self.latency)
-            trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
+            # lookup_time = rospy.Time.now() - rospy.Duration(self.latency)
+            # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
+            print("look up transform")
+            trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', img_time)
             # print('current_time: ', rospy.Time.now(), '  time from bounding box:', self.bounding_box_time)
             # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', self.bounding_box_time)
             # Get relative transform between frames
@@ -244,7 +247,7 @@ class PlantLocalizer(object):
         line_begin_pts = np.array(np.dot(xyz_h, camera_to_map.T))
         line_end_pts = np.array(np.dot((self.max_line_length*xyz_h), camera_to_map.T))
         # iterate and save points
-        for i in len(line_begin_pts):
+        for i in range(len(line_begin_pts)):
             if track_ids[i] in self.tracked_plants.track_ids:
                 # get index
                 index = self.tracked_plants.track_ids.index(track_ids[i])
@@ -303,15 +306,14 @@ class PlantLocalizer(object):
             height = box.ymax-box.ymin
             print('width: ', width, '   height: ', height)
             wth_ratio = width/height
-            if self.min_wth_ratio < wth_ratio < self.max_wth_ratio:
+            if True:
                 filtered_boxes.append(box)
-            else:
-                print('box was filtered')
+
         return filtered_boxes
 
     def cb_bounding_boxes(self, msg):
-        print('bounding box received')
-        if len(msg.bounding_boxes) > 0:
+        if len(msg.bounding_boxes) > 0 and self.create_pc:
+            print('bounding box received')
             self.bounding_box_time = msg.header.stamp
             # get time of image of detection for correct time stamp
             image_time = msg.image_header.stamp
@@ -324,22 +326,20 @@ class PlantLocalizer(object):
                 self.calculate_and_add_lines(xyz_h, labels, image_time)
 
     def cb_tracked_bounding_boxes(self, msg):
-        global refresh_locations
-        print('bounding box received')
-        if len(msg.bounding_boxes) > 0:
-            self.bounding_box_time = msg.header.stamp
+        print('tracked bounding box received')
+        if len(msg.bounding_boxes.bounding_boxes) > 0:
+            self.bounding_box_time = msg.bounding_boxes.header.stamp
             # get time of image of detection for correct time stamp
             image_time = msg.bounding_boxes.image_header.stamp
             # filtered_boxed, scale_est = self.filter_bounding_boxes(msg.bounding_boxes)
-            center_points, labels = self.calculate_center_points(msg.bounding_boxes)
+            center_points, labels = self.calculate_center_points(msg.bounding_boxes.bounding_boxes)
             print("Center points pixel: ", center_points, "  Labels: ", labels)
-            xyz_h = self.undistort_and_project(center_points, image_time)
-            self.add_to_container(xyz_h, msg.track_ids)
-            refresh_locations += 1
-            if refresh_locations > 10:
+            xyz_h = self.undistort_and_project(center_points)
+            self.add_to_container(xyz_h, msg.track_ids, image_time)
+            self.refresh_locations += 1
+            if self.refresh_locations > 50:
                 self.update_locations()
-                refresh_locations = 0
-
+                self.refresh_locations = 0
 
 
     def cb_odom(self, msg):

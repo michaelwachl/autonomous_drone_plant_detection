@@ -1,11 +1,13 @@
-create_pc: true
+create_pc: false
+
+latency: 0.2
 
 min_number_lines: 20
-min_line_length: 0.7
-max_line_length: 4.0
+min_line_length: 0.9
+max_line_length: 5.0
 line_step: 0.1
 discard_margin: 10     # in pixel
-latency_image_position: 0.0
+latency_image_position: 0.2
 
 image_width: 960
 image_height: 720
