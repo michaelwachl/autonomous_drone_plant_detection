@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="tello_controller" name="tello_controller_node" type="tello_controller.py" output="screen">
+
+       <rosparam file="$(find tello_controller)/config/position_controller.yaml" />
+
+  </node>
+</launch>
