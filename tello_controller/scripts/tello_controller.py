@@ -12,40 +12,10 @@ from std_msgs.msg import String, Empty
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from tf import TransformListener, LookupException, ConnectivityException, ExtrapolationException
 from mission_state import MissionState
+from controller_log import ControllerLog
 from copy import deepcopy
 import math
-
-
-threep_path_msg = Path()						# init path
-threep_path_msg.header.seq = 0
-threep_path_msg.header.frame_id = 'world'
-waypoint = PoseStamped()				# Pose added to path
-waypoint_2 = PoseStamped()				# Pose added to path
-waypoint_3 = PoseStamped()				# Pose added to path
-
-waypoint.header.seq = 0
-waypoint.header.frame_id = "world"
-waypoint.pose.position.x = 1.0
-waypoint.pose.position.z = 1.7
-waypoint.pose.orientation.z = 0.7
-waypoint.pose.orientation.w = 0.7
-
-waypoint_2.header.seq = 1
-waypoint_2.header.frame_id = "world"
-waypoint_2.pose.position.x = 0.0
-waypoint_2.pose.position.y = 0.0
-waypoint_2.pose.position.z = 1.7
-waypoint_2.pose.orientation.z = 0.7
-waypoint_2.pose.orientation.w =0.7
-
-waypoint_3.header.seq = 2
-waypoint_3.header.frame_id = "world"
-waypoint_3.pose.position.x = 0.0
-waypoint_3.pose.position.y = 0.0
-waypoint_3.pose.position.z = 1.0
-
-threep_path_msg.poses.append(deepcopy(waypoint))
-threep_path_msg.poses.append(deepcopy(waypoint_2))
+from waypoints import WayPoints
 
 
 class TelloController(object):
@@ -58,14 +28,16 @@ class TelloController(object):
         self.ns_node = 'tello_controller/'   # rospy.get_namespace()
 
         print(self.ns_node)
-        # set parameters on parameter server
+        # load/set parameters on parameter server
         tello_frame = rospy.get_param("~frame", "base_link")
-        self.control_rate = rospy.get_param("frequency", 20.0)
+        self.control_rate = rospy.get_param("~frequency", 20.0)
+        self.stabalize_time = rospy.get_param("~stabalize_time", 5.0)
+        self.log_controller = rospy.get_param("~log_controller", True)
         # create flight PID controllers in X, Y and Z
         self.pid_x = PID("PID_x",
                     rospy.get_param("~PIDs/X/kp", 2.0),
                     rospy.get_param("~PIDs/X/kd", 0),
-                    rospy.get_param("~PIDs/X/ki", 0),
+                    rospy.get_param("~PIDs/X/ki", 0.1),
                     rospy.get_param("~PIDs/X/minOutput", -0.25),
                     rospy.get_param("~PIDs/X/maxOutput", 0.25),
                     rospy.get_param("~PIDs/X/integratorMin", -0.1),
@@ -74,7 +46,7 @@ class TelloController(object):
         self.pid_y = PID("PID_y",
                     rospy.get_param("~PIDs/Y/kp", 2.0),
                     rospy.get_param("~PIDs/Y/kd", 0),
-                    rospy.get_param("~PIDs/Y/ki", 0),
+                    rospy.get_param("~PIDs/Y/ki", 0.1),
                     rospy.get_param("~PIDs/Y/minOutput", -0.25),
                     rospy.get_param("~PIDs/Y/maxOutput", 0.25),
                     rospy.get_param("~PIDs/Y/integratorMin", -0.1),
@@ -98,13 +70,14 @@ class TelloController(object):
                     rospy.get_param("~PIDs/Yaw/integratorMin", -0.1),
                     rospy.get_param("~PIDs/Yaw/integratorMax", 0.1),
                     True)
-        self.stabalize_time = rospy.get_param("~PIDs/StabilizeTime", 5.0)
 
-        self.target_error_x = 0.1
-        self.target_error_y = 0.1
-        self.target_error_z = 0.1
-        self.target_error_yaw = 0.17
+        self.target_error_x = rospy.get_param("~PIDs/target_error_x", 0.1)
+        self.target_error_y = rospy.get_param("~PIDs/target_error_y", 0.1)
+        self.target_error_z = rospy.get_param("~PIDs/target_error_z", 0.1)
+        self.target_error_yaw = rospy.get_param("~PIDs/target_error_yaw", 0.17)
 
+        # test path
+        test_wayp = WayPoints()
         test_point = PoseStamped()
         test_center = PoseStamped()
         test_point.header.frame_id = "world"
@@ -114,7 +87,9 @@ class TelloController(object):
         test_path = PathObject(test_point, test_center, 20, 2.0, 1.5)      # begin, center, seg, radius, height
         self.path_msg = Path()  # init path
         self.path_msg = test_path.get_path()
-        # print(self.path_msg)
+        self.path_msg = test_wayp.get_path()
+        # init trail
+        self.trail_msg = Path()  # init path
 
         # define variables
         self.current_pose = PoseStamped()
@@ -144,8 +119,12 @@ class TelloController(object):
         self.pub_takeoff = rospy.Publisher(self.ns_tello+'takeoff', Empty, queue_size=1)
         self.pub_land = rospy.Publisher(self.ns_tello+'land', Empty, queue_size=1)
         self.pub_path = rospy.Publisher(self.ns_node+'target_path', Path, queue_size=1)
+        self.pub_trail = rospy.Publisher(self.ns_node + 'trail_path', Path, queue_size=1)
         self.pub_target = rospy.Publisher(self.ns_node+'target_pose', PoseStamped, queue_size=1)
         self.pub_command = rospy.Publisher(self.ns_node+'mission_command', String, queue_size=1)
+
+        # init logger
+        self.log_controller = ControllerLog()
 
         # create additional thread for conroller
         self.last_iteration_time = time.time()
@@ -185,7 +164,6 @@ class TelloController(object):
             self.path_msg.header.seq = 0
             self.path_msg.header.frame_id = 'world'
             self.path_msg.poses.append(self.target_position)
-
 
     # Callback for Tello state update
     def update_tello_state(self, msg):
@@ -239,6 +217,7 @@ class TelloController(object):
             # calculate PID control value for Tello x control
             x_vel = self.pid_x.update(self.current_pose.position.x, self.target_position.pose.position.x)
             self.fly_msg.linear.x = x_vel
+
             # calculate PID control value for Tello y control
             y_vel = self.pid_y.update(self.current_pose.position.y, self.target_position.pose.position.y)
             self.fly_msg.linear.y = y_vel
@@ -255,8 +234,21 @@ class TelloController(object):
             # rospy.loginfo('ERROR x: %.2f | error y: %.2f | error z: %.2f | error yaw: %.2f',
             #              self.pid_x.error, self.pid_y.error, self.pid_z.error, self.pid_yaw.error)
             # rospy.loginfo('VEL x: %.2f |  y: %.2f |  z: %.2f |  yaw: %.2f', x_vel, y_vel, z_vel, z_ang)
-
-
+            if self.log_controller:
+                self.log_controller.current_x.append(deepcopy(self.current_pose.position.x))
+                self.log_controller.target_x.append(deepcopy(self.target_position.pose.position.x))
+                self.log_controller.current_y.append(deepcopy(self.current_pose.position.y))
+                self.log_controller.target_y.append(deepcopy(self.target_position.pose.position.y))
+                self.log_controller.current_z.append(deepcopy(self.current_pose.position.z))
+                self.log_controller.target_z.append(deepcopy(self.target_position.pose.position.z))
+                self.log_controller.current_yaw.append(deepcopy(self.current_yaw))
+                self.log_controller.target_yaw.append(deepcopy(target_angles[2]))
+                self.log_controller.error_x.append(deepcopy(self.pid_x.error))
+                self.log_controller.error_y.append(deepcopy(self.pid_y.error))
+                self.log_controller.error_z.append(deepcopy(self.pid_z.error))
+                self.log_controller.error_yaw.append(deepcopy(self.pid_yaw.error))
+                self.log_controller.time_axis.append(time.time())
+            
     def calibrate_word_scale(self):
         blabla = None
 

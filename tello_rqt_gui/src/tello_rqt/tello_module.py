@@ -15,10 +15,6 @@ import time
 import rospy
 import rospkg
 import threading
-import multiprocessing
-import sys
-import traceback
-# import av
 
 # Import Generated UI from Python file
 from resource.TelloPlugin import Ui_TelloPlugin
@@ -45,6 +41,8 @@ from cv_bridge import CvBridge, CvBridgeError
 from tf import TransformListener, LookupException, ConnectivityException, ExtrapolationException
 from tf.transformations import euler_from_quaternion
 
+from wlan_info import WifiInfo
+from system_utility import GetUtility
 
 class TelloPlugin(Plugin):
 
@@ -58,7 +56,11 @@ class TelloPlugin(Plugin):
     sig_connection_changed = pyqtSignal()
     sig_update_position = pyqtSignal()
     sig_battery_percentage = pyqtSignal(int)
-    sig_wifi_percentage = pyqtSignal(int)
+    sig_tello_link = pyqtSignal(int)
+    sig_wifi_sig_link = pyqtSignal(int)
+    sig_cpu = pyqtSignal(float)
+    sig_memory = pyqtSignal(float)
+    sig_temperature = pyqtSignal(float)
     sig_height = pyqtSignal(str)
     sig_speed = pyqtSignal(str)
     sig_flight_time = pyqtSignal(str)
@@ -122,6 +124,12 @@ class TelloPlugin(Plugin):
         self.video_recorder = None 
         self.VIDEO_TYPE = {'avi': cv2.VideoWriter_fourcc(*'XVID'), 'mp4': cv2.VideoWriter_fourcc(*'MP4V')}
 
+        # System, process and Wifi interface info
+        interface = "wlp2s0"
+        ssid_names = "TELLO-FD143A"
+        self.wifi_info = WifiInfo(interface, ssid_names)
+        self.utility = GetUtility()
+
         # Callbacks GUI items
         self.ui.connect_button.clicked[bool].connect(self.handle_connect_clicked)			
         self.ui.record_button.clicked[bool].connect(self.handle_record_clicked)
@@ -143,17 +151,23 @@ class TelloPlugin(Plugin):
         self.ui.foto_button.setIconSize(QSize(25,25)) 
         self.ui.label_record_time.setText('record')
 
-
         # Set bar values to 0
         self.ui.link_bar.setValue(0)
         self.ui.battery_bar.setValue(0)
+        self.ui.cpu_bar.setValue(0)
+        self.ui.memory_bar.setValue(0)
+        self.ui.temperature_bar.setValue(0)
 
         # create signals and slots for updates
         # never access widgets and GUI related things directly from a thread other than the main thread
         self.sig_connection_changed.connect(self.update_ui_state)
         self.sig_update_position.connect(self.update_position_data)
         self.sig_battery_percentage.connect(self.ui.battery_bar.setValue)
-        self.sig_wifi_percentage.connect(self.ui.link_bar.setValue)
+        self.sig_tello_link.connect(self.ui.link_bar.setValue)
+        self.sig_wifi_sig_link.connect(self.ui.wifi_signal_bar.setValue)
+        self.sig_cpu.connect(self.ui.cpu_bar.setValue)
+        self.sig_memory.connect(self.ui.memory_bar.setValue)
+        self.sig_temperature.connect(self.ui.temperature_bar.setValue)
         self.sig_height.connect(self.ui.label_height.setText)
         self.sig_speed.connect(self.ui.label_speed.setText)
         self.sig_flight_time.connect(self.ui.label_flight_time.setText)
@@ -182,10 +196,14 @@ class TelloPlugin(Plugin):
         self.sub_video = rospy.Subscriber('tello/camera/image_raw', Image, self.cb_video)
         self.sub_odom = rospy.Subscriber(self.ns_tello+'odom', Odometry, self.cb_odom, queue_size=1)
         self.sub_slam_pose = rospy.Subscriber(self.topic_slam_pose, PoseStamped, self.cb_slam_pose, queue_size=1)
-
         self.sub_mission = rospy.Subscriber(self.ns_controller+'mission_state', String, self.cb_mission_state)
 
         self.cv_image = None
+
+        # create additional thread for system und process utility
+        self.stop_threads = False
+        self.thread = threading.Thread(target=self.update_sys_util, args=())
+        self.thread.start()
         print('init done')
 
     def update_ui_state(self):
@@ -194,6 +212,7 @@ class TelloPlugin(Plugin):
             # self.ui.connect_button.setStyleSheet("background-color: None")
             self.ui.link_bar.setValue(0)
             self.ui.battery_bar.setValue(0)
+            self.ui.wifi_signal_bar.setValue(-90)
         elif self.tello_state == self.STATE_CONNECTED.getname():
             self.ui.connect_button.setText("Disconnect")
             # self.ui.connect_button.setStyleSheet("background-color: lightgreen")
@@ -203,7 +222,23 @@ class TelloPlugin(Plugin):
             # Set bar values to 0
             self.ui.link_bar.setValue(0)
             self.ui.battery_bar.setValue(0)
+            self.ui.wifi_signal_bar.setValue(-90)
             # self.ui.connect_button.setStyleSheet("background-color: None")
+
+    def update_sys_util(self):
+        # do next iteration of not shutdown
+        if not rospy.is_shutdown() and not self.stop_threads:
+            # get cpu, memory percentage and temperature
+            cpu, memory, temp = self.utility.get_data()
+            # get wifi ling quality
+            sig, qual = self.wifi_info.get_info()
+            self.sig_cpu.emit(cpu)
+            self.sig_memory.emit(memory)
+            self.sig_temperature.emit(temp)
+            self.sig_wifi_sig_link.emit(sig)
+            # start new timer
+            timer = 2.0     # seconds
+            threading.Timer(timer, self.update_sys_util).start()
 
     def handle_connect_clicked(self):
         """
@@ -305,7 +340,7 @@ class TelloPlugin(Plugin):
 
     def cb_status(self, msg):
         self.sig_battery_percentage.emit(msg.battery_percentage)
-        self.sig_wifi_percentage.emit(msg.wifi_strength)
+        self.sig_tello_link.emit(msg.wifi_strength)
         self.sig_height.emit("%.2f" % msg.height_m)
         self.sig_speed.emit("%.2f" % msg.speed_horizontal_mps)
         self.sig_flight_time.emit("%.2f" % msg.flight_time_sec)
@@ -316,6 +351,7 @@ class TelloPlugin(Plugin):
         m, s = divmod(-msg.drone_fly_time_left_sec/10., 60)
         # print("Remaining: ",m,"min, ",s,"s")
         self.sig_remaining_time.emit("%d:%d" % (m, s))
+
         # check position
         self.sig_update_position.emit()
 
@@ -352,6 +388,8 @@ class TelloPlugin(Plugin):
         # self._ros_process.close()
         print(os.path.dirname(os.path.realpath(__file__)))
         self.pub_disconnect.publish(Empty())
+        self.stop_threads = True
+        self.thread.join()
         pass
 
     def save_settings(self, plugin_settings, instance_settings):

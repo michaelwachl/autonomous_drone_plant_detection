@@ -51,6 +51,10 @@ class TopicMonitoring(object):
 		# Subscribe to topics
 		self.img_dec = rospy.Subscriber('/tello/camera/image_raw', Image, self.handle_img)
 		self.img_comp = rospy.Subscriber('/tello/image_raw/h264', CompressedImage, self.handle_comp_img)
+		# publish
+		self.pub_img_center = rospy.Publisher('/tello/camera/image_raw_center', Image)
+
+		self.bridge = CvBridge()
 
 		# Topic monitoring
 		#self.topic_info_image = TopicInfo('/tello/camera/image_raw', Image)
@@ -108,7 +112,24 @@ class TopicMonitoring(object):
 		i += 1
 		diff_ms.append(diff*1e3)
 
+		self.add_center_line(msg)
+
 		# print('Latency image: ', diff_ms[-1])
+
+
+	def add_center_line(self, msg):
+
+		cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+		width, height = 960, 720
+		x1, y1 = 0, 0
+		x2, y2 = 200, 400   
+
+		line_thickness = 2
+		cv2.line(cv_image, (1, 363), (959, 363), (100, 255, 50), thickness=line_thickness)
+		cv2.line(cv_image, (487, 1), (487, 719), (100, 255, 50), thickness=line_thickness)
+
+		img_msg = self.bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
+		self.pub_img_center.publish(img_msg)
 
 
 	def handle_comp_img(self, msg):

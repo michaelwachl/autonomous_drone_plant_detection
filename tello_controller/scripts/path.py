@@ -25,7 +25,7 @@ class PathObject(object):
 
 	def normalize_angle_positive(self, angle):
 		""" Normalizes the angle to be 0 to 2*pi
-            It takes and returns radians. """
+        It takes and returns radians. """
 		return angle % (2.0 * pi)
 
 	def normalize_angle(self, angle):
