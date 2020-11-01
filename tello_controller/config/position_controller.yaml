@@ -1,42 +1,43 @@
 stabalize_time: 5.0
 log_controller: true
+show_trail: true
 control_rate: 20.0
 
 PIDs:
   X:
-    kp: 2.0
-    kd: 0.0
+    kp: 3.0
+    kd: 0.1
     ki: 0.0
-    minOutput: -0.25
-    maxOutput: 0.25
+    minOutput: -0.3
+    maxOutput: 0.3
     integratorMin: -0.1
     integratorMax: 0.1
   Y:
     kp: 2.0
-    kd: 0.0
+    kd: 0.1
     ki: 0.0
-    minOutput: -0.25
-    maxOutput: 0.25
+    minOutput: -0.3
+    maxOutput: 0.3
     integratorMin: -0.1
     integratorMax: 0.1
   Z:
-    kp: 2.0
-    kd: 0.0
+    kp: 3.0
+    kd: 0.1
     ki: 0.0
-    minOutput: -0.35
-    maxOutput: 0.35
+    minOutput: -0.4
+    maxOutput: 0.4
     integratorMin: -0.1
     integratorMax: 0.1
   Yaw:
-    kp: 2.0
-    kd: 0.0
+    kp: 3.0
+    kd: 0.1
     ki: 0.0
-    minOutput: -0.35
-    maxOutput: 0.35
+    minOutput: -0.7
+    maxOutput: 0.7
     integratorMin: -0.1
     integratorMax: 0.1
 
   target_error_x: 0.1
   target_error_y: 0.1
   target_error_z: 0.1
-  target_error_yaw: 0.17
+  target_error_yaw: 0.13
