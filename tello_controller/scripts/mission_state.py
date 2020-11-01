@@ -20,13 +20,22 @@ class MissionState:
         # setting current state of the system
         self.current_state = self.READY
         self.calibrated = False
+        self.calibrating = False
 
         # home pose
         self.home_pose = PoseStamped()
         self.home_pose.header.seq = 0
         self.home_pose.header.frame_id = "world"
         self.home_pose.pose.position.z = 0.5
-
+        # calibration pose
+        self.down_pose = PoseStamped()
+        self.down_pose.header.seq = 0
+        self.down_pose.header.frame_id = "world"
+        self.down_pose.pose.position.z = 0.7
+        self.up_pose = PoseStamped()
+        self.up_pose.header.seq = 0
+        self.up_pose.header.frame_id = "world"
+        self.up_pose.pose.position.z = 1.5
         # stopped flag to denote that iteration is stopped due to bad
         # input against which transition was not defined.
         self.stop = False

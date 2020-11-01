@@ -8,7 +8,7 @@ from path import PathObject
 from geometry_msgs.msg import Twist, PoseStamped, Point, Pose, Quaternion, PoseArray
 from nav_msgs.msg import Path, Odometry
 from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import String, Empty
+from std_msgs.msg import String, Empty, Float32
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from tf import TransformListener, LookupException, ConnectivityException, ExtrapolationException
 from mission_state import MissionState
@@ -117,6 +117,7 @@ class TelloController(object):
         self.mission_state = MissionState()
 
         self.slam_pose_topic = 'orb_slam_2_ros/pose'
+        self.real_world_scale = 1.5
 
         # subscribe to target pose
         self.fly_msg = Twist()
@@ -136,6 +137,7 @@ class TelloController(object):
         self.pub_trail = rospy.Publisher(self.ns_node + 'trail_path', Path, queue_size=1)
         self.pub_target = rospy.Publisher(self.ns_node+'target_pose', PoseStamped, queue_size=1)
         self.pub_command = rospy.Publisher(self.ns_node+'mission_command', String, queue_size=1)
+        self.pub_real_world_scale = rospy.Publisher(self.ns_node+'slam_real_world_scale', Float32, queue_size=1)
 
         # init logger
         self.log_controller = ControllerLog()
@@ -268,7 +270,49 @@ class TelloController(object):
             self.log_controller.time_axis.append(time.time())
             
     def calibrate_word_scale(self):
-        blabla = None
+        rospy.loginfo('starting calibration of SLAM real world scale')
+        # set and go to down position
+        self.target_position = self.mission_state.down_pose
+        while abs(self.pid_z.error) > 0.05:
+            self.calculate_control()
+            # Flip commands for tello!
+            self.process_and_flip_command()
+            self.pub_velocity.publish(self.fly_tello_msg)
+            rospy.sleep(0.1)
+        # measure 5 points
+        slam_z_down = []
+        tello_z_down = []
+        for i in range(5):
+            slam_z_down.append(self.slam_pos.z)
+            tello_z_down.append(self.current_pose.position.z)
+            rospy.sleep(0.2)
+        # set and go to up position
+        self.target_position = self.mission_state.up_pose
+        while abs(self.pid_z.error) > 0.05:
+            self.calculate_control()
+            # Flip commands for tello!
+            self.process_and_flip_command()
+            self.pub_velocity.publish(self.fly_tello_msg)
+            rospy.sleep(0.1)
+        # measure 5 points
+        slam_z_up = []
+        tello_z_up = []
+        for i in range(5):
+            slam_z_up.append(self.slam_pos.z)
+            tello_z_up.append(self.current_pose.position.z)
+            rospy.sleep(0.2)
+        # calculate real world scale
+        try:
+            tello_up_mean = sum(tello_z_up) / len(tello_z_up)
+            tello_down_mean = sum(tello_z_down) / len(tello_z_down)
+            slam_up_mean = sum(tello_z_up) / len(tello_z_up)
+            slam_down_mean = sum(slam_z_down) / len(slam_z_down)
+            self.real_world_scale = (tello_up_mean - tello_down_mean) / (slam_up_mean - slam_down_mean)
+            self.pub_real_world_scale.publish(self.real_world_scale)
+        except ZeroDivisionError:
+            rospy.loginfo('Error: ZeroDivisionError')
+
+
 
     def process_and_flip_command(self):
         # rotate vel commands to drone frame around z
@@ -337,10 +381,13 @@ class TelloController(object):
             # calculate velocities
             self.calculate_control()
             # check goal
-            # self.close_enough()
+            self.close_enough()
             # Flip commands for tello!
             self.process_and_flip_command()
             self.pub_velocity.publish(self.fly_tello_msg)
+        elif self.mission_state.current_state == self.mission_state.CALIBRATE:
+            self.calibrate_word_scale()
+
         elif self.mission_state.current_state == self.mission_state.GO_HOME and self.target:
             rospy.loginfo("Going home")
             # calculate velocities
