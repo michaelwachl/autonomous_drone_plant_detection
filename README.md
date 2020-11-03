@@ -17,7 +17,7 @@ The micro drone [Tello EDU](https://www.ryzerobotics.com/de/tello-edu) is used a
 - [x] PID position controller and mission commander
 - [x] Object dection with costum data set and YOLOv4
 - [x] Object tracking with costum data set and YOLOv4
-- [ ] Scale routine
+- [x] Scale routine
 - [ ] Object localization with YOLOv4 bounding box
 - [ ] Object localization with pointclould and bounding box
 - [ ] Plausability check and other tests
