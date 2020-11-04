@@ -1,0 +1,13 @@
+yolo_model:
+
+  config_file:
+    name: yolov4-tiny-custom_tomato.cfg
+  weight_file:
+    name: yolov4-tiny-custom_tomato_final.weights
+  threshold:
+    value: 0.3
+  detection_classes:
+    names:
+      - roma
+      - busch
+      

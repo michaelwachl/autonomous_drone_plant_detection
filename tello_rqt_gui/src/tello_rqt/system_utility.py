@@ -14,9 +14,11 @@ class GetUtility:
 
     def get_temp(self):
         current_temps = psutil.sensors_temperatures()
+	# print(current_temps)
         try:
             # temp = current_temps['current_temps'][0].current
-            temp = current_temps['k10temp'][0].current
+	    temp = current_temps['pch_cannonlake'][0].current
+            # temp = current_temps['k10temp'][0].current
             return temp
         except ValueError, KeyError:
             return 0
