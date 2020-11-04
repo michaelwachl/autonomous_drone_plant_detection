@@ -116,7 +116,8 @@ class TelloController(object):
         self.hover_position = None
         self.mission_state = MissionState()
 
-        self.slam_pose_topic = 'orb_slam_2_ros/pose'
+        self.slam_pose_topic = '/orb_slam2_mono/pose'
+        self.slam_pos = PoseStamped()
         self.real_world_scale = 1.5
 
         # subscribe to target pose
@@ -129,6 +130,7 @@ class TelloController(object):
         # ROS Subs und Pubs initialize
         rospy.Subscriber(self.ns_node+'target_pose', PoseStamped, self.cb_target_pose, queue_size=1)
         rospy.Subscriber(self.ns_tello+'odom', Odometry, self.cb_odom, queue_size=1)
+        rospy.Subscriber(self.slam_pose_topic, PoseStamped, self.cb_slam_position, queue_size=1)
 
         self.pub_velocity = rospy.Publisher(self.ns_tello+'cmd_vel', Twist, queue_size=1)
         self.pub_takeoff = rospy.Publisher(self.ns_tello+'takeoff', Empty, queue_size=1)
@@ -166,13 +168,13 @@ class TelloController(object):
             self.current_yaw = current_angles[2]
 
     def cb_slam_position(self, msg):
-        if self.slam_control:
-            self.slam_pos = msg.pose.position
-            self.slam_quaternion = msg.pose.orientation
-            self.slam_orientation_rad_list = euler_from_quaternion(
-                [self.slam_quaternion.x, self.slam_quaternion.y, self.slam_quaternion.z, self.slam_quaternion.w])
-            self.slam_orientation_rad = Point(self.slam_orientation_rad_list[0], self.slam_orientation_rad_list[1],
-                                              self.slam_orientation_rad_list[2])
+        self.slam_pos.pose = msg.pose
+        # print("current slam z:%s " % self.slam_pos.pose.position.z)
+        self.slam_quaternion = msg.pose.orientation
+        self.slam_orientation_rad_list = euler_from_quaternion(
+            [self.slam_quaternion.x, self.slam_quaternion.y, self.slam_quaternion.z, self.slam_quaternion.w])
+        self.slam_orientation_rad = Point(self.slam_orientation_rad_list[0], self.slam_orientation_rad_list[1],
+                                          self.slam_orientation_rad_list[2])
 
     # This callback function puts the target PoseStamped message into a local variable.
     def cb_target_pose(self, msg):
@@ -273,7 +275,12 @@ class TelloController(object):
         rospy.loginfo('starting calibration of SLAM real world scale')
         # set and go to down position
         self.target_position = self.mission_state.down_pose
+        self.calculate_control()
+        rospy.loginfo('go to lower position')
         while abs(self.pid_z.error) > 0.05:
+            if self.mission_state.stop:
+                rospy.loginfo('calibration stopped')
+                return
             self.calculate_control()
             # Flip commands for tello!
             self.process_and_flip_command()
@@ -282,13 +289,19 @@ class TelloController(object):
         # measure 5 points
         slam_z_down = []
         tello_z_down = []
+        rospy.loginfo('measure height values')
         for i in range(5):
-            slam_z_down.append(self.slam_pos.z)
+            slam_z_down.append(self.slam_pos.pose.position.z)
             tello_z_down.append(self.current_pose.position.z)
             rospy.sleep(0.2)
         # set and go to up position
         self.target_position = self.mission_state.up_pose
+        self.calculate_control()
+        rospy.loginfo('go to upper position')
         while abs(self.pid_z.error) > 0.05:
+            if self.mission_state.stop:
+                rospy.loginfo('calibration stopped')
+                return
             self.calculate_control()
             # Flip commands for tello!
             self.process_and_flip_command()
@@ -297,22 +310,28 @@ class TelloController(object):
         # measure 5 points
         slam_z_up = []
         tello_z_up = []
+        rospy.loginfo('measure height values')
         for i in range(5):
-            slam_z_up.append(self.slam_pos.z)
+            slam_z_up.append(self.slam_pos.pose.position.z)
             tello_z_up.append(self.current_pose.position.z)
             rospy.sleep(0.2)
         # calculate real world scale
+        rospy.loginfo('calculate scale')
         try:
             tello_up_mean = sum(tello_z_up) / len(tello_z_up)
             tello_down_mean = sum(tello_z_down) / len(tello_z_down)
-            slam_up_mean = sum(tello_z_up) / len(tello_z_up)
+            slam_up_mean = sum(slam_z_up) / len(slam_z_up)
             slam_down_mean = sum(slam_z_down) / len(slam_z_down)
             self.real_world_scale = (tello_up_mean - tello_down_mean) / (slam_up_mean - slam_down_mean)
             self.pub_real_world_scale.publish(self.real_world_scale)
+            print('Diff Odom: %s' % (tello_up_mean - tello_down_mean))
+            print('Diff SLAM: %s' % (slam_up_mean - slam_down_mean))
+            print("Scale: %s" % self.real_world_scale)
+            rospy.loginfo('scale published')
+            self.mission_state.current_state = self.mission_state.STOPPED
+            self.mission_state.stop = True
         except ZeroDivisionError:
             rospy.loginfo('Error: ZeroDivisionError')
-
-
 
     def process_and_flip_command(self):
         # rotate vel commands to drone frame around z

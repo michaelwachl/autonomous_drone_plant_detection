@@ -89,10 +89,8 @@ If no roscore is running, start one with
 
 Then Run the sensor node(s) with
 
-	rosrun environment_sensor bme680_receive.py
-or
+	rqt --standalone tello_rqt_gui --force-discover
 
-    rosrun environment_sensor bme680_receive.py
 depending on your sensor.
 
 ## Config files

@@ -22,7 +22,7 @@ import time
 # Import connection state
 from tello_driver.msg import TelloStatus
 from sensor_msgs.msg import Image
-from std_msgs.msg import String, Empty
+from std_msgs.msg import String, Empty, Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 import state
@@ -138,6 +138,7 @@ class TelloPlugin(Plugin):
         self.ui.start_button.clicked[bool].connect(self.handle_start_clicked)
         self.ui.land_button.clicked[bool].connect(self.handle_land_clicked)
         self.ui.target_button.clicked[bool].connect(self.handle_target_clicked)
+        self.ui.calibrate_button.clicked[bool].connect(self.handle_calibrate_clicked)
 
         # Set icons
         # get an instance of RosPack with the default search paths
@@ -185,6 +186,7 @@ class TelloPlugin(Plugin):
         self.ns_tello = 'tello/'
         self.ns_controller = 'tello_controller/'
         self.topic_slam_pose = '/orb_slam2_mono/pose'
+        self.topic_slam_scale = 'tello_controller/slam_real_world_scale'
         self.tello_state = self.STATE_DISCONNECTED.getname()
         self.pub_connect = rospy.Publisher(self.ns_tello+'connect', Empty, queue_size=1, latch=True)
         self.pub_disconnect = rospy.Publisher(self.ns_tello+'disconnect', Empty, queue_size=1, latch=True)
@@ -196,6 +198,7 @@ class TelloPlugin(Plugin):
         self.sub_video = rospy.Subscriber('tello/camera/image_raw', Image, self.cb_video)
         self.sub_odom = rospy.Subscriber(self.ns_tello+'odom', Odometry, self.cb_odom, queue_size=1)
         self.sub_slam_pose = rospy.Subscriber(self.topic_slam_pose, PoseStamped, self.cb_slam_pose, queue_size=1)
+        self.sub_slam_scale = rospy.Subscriber(self.topic_slam_scale, Float32, self.cb_slam_scale, queue_size=1)
         self.sub_mission = rospy.Subscriber(self.ns_controller+'mission_state', String, self.cb_mission_state)
 
         self.cv_image = None
@@ -283,6 +286,9 @@ class TelloPlugin(Plugin):
     def handle_target_clicked(self):
         self.pub_mission_command.publish('target')
 
+    def handle_calibrate_clicked(self):
+        self.pub_mission_command.publish('calibrate')
+
     def update_record_time(self):
         # self.record_time = QtCore.QTime(00,00,00)
         # print("Update Recording time")
@@ -331,6 +337,9 @@ class TelloPlugin(Plugin):
         self.ui.label_slam_y.setText('%.2f' % msg.pose.position.y)
         self.ui.label_slam_z.setText('%.2f' % msg.pose.position.z)
         self.ui.label_slam_yaw.setText('%.2f' % current_angles[2])
+
+    def cb_slam_scale(self, msg):
+        self.ui.label_slam_scaling.setText('%.2f' % msg.data)
 
     def cb_picture_update(self, msg):
         self.ui.label_foto.setText(msg.data)

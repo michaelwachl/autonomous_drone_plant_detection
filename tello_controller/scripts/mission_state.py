@@ -67,6 +67,7 @@ class MissionState:
             self.current_state = self.TAKEOFF
             rospy.loginfo("state takeoff set")
         elif msg.data == 'calibrate':
+            self.stop = False
             self.current_state = self.CALIBRATE
         elif msg.data == 'land':
             self.stop = False
@@ -78,6 +79,7 @@ class MissionState:
         elif msg.data == 'circle':
             self.current_state = self.CIRCLE
         elif msg.data == 'detect':
+            self.stop = False
             self.current_state = self.DETECT
         elif msg.data == 'target':
             self.stop = False

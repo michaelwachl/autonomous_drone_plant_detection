@@ -14,8 +14,14 @@ class GetUtility:
 
     def get_temp(self):
         current_temps = psutil.sensors_temperatures()
-        return current_temps['coretemp'][0].current
+        try:
+            # temp = current_temps['current_temps'][0].current
+            temp = current_temps['k10temp'][0].current
+            return temp
+        except ValueError, KeyError:
+            return 0
 
     def get_data(self):
         return self.get_cpu(), self.get_memory(), self.get_temp()
+
 
