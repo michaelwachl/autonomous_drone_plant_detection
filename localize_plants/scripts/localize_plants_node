@@ -22,9 +22,9 @@ import cv2
 
 class Scale:
     """Class for marker scale definition (rviz)"""
-    x = 0.7
-    y = 0.7
-    z = 0.7
+    x = 0.2
+    y = 0.2
+    z = 0.2
 
 class TrackContainer:
     """Container for all lines of tracked object"""
@@ -58,6 +58,8 @@ class PlantLocalizer(object):
         self.min_number_lines = rospy.get_param('~min_number_lines')
         self.cosine_sim = rospy.get_param('~cosine_sim')
         self.create_pc = rospy.get_param('~create_pc')
+        self.image_width = rospy.get_param('~image_width')
+        self.image_height = rospy.get_param('~image_height')
 
         #print(self.camera_matrix)
 
@@ -144,6 +146,7 @@ class PlantLocalizer(object):
         rospy.spin()
 
         # test intersection
+        """
         p_beg = np.zeros((2, 3), dtype=np.float32)
         p_end = np.zeros((2, 3), dtype=np.float32)
 
@@ -155,16 +158,20 @@ class PlantLocalizer(object):
 
         intersection = self.intersect_lines(p_beg, p_end)
         print(intersection)
+        """
 
     def get_transform_to_map(self, img_time):
         """try to transfrom from current points from camera frame to map frame
         """
         try:
+            latency = rospy.Duration(self.latency)
+            lookup_time = img_time - latency
             self.pos_listener.waitForTransform('map', 'camera_frame', rospy.Time(), rospy.Duration(10))
             # lookup_time = rospy.Time.now() - rospy.Duration(self.latency)
             # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
             # print("look up transform")
-            trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', img_time)
+            # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', img_time)
+            trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
             # print('current_time: ', rospy.Time.now(), '  time from bounding box:', self.bounding_box_time)
             # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', self.bounding_box_time)
             # Get relative transform between frames
@@ -224,6 +231,8 @@ class PlantLocalizer(object):
                     self.line_point.x = point_in_map[0]
                     self.line_point.y = point_in_map[1]
                     self.line_point.z = point_in_map[2]
+                    if 3.1 > self.line_point.x > 2.9:
+                        print('World Point in 3m: ', self.line_point)
                     self.first_pointcould.points.append(deepcopy(self.line_point))
             elif labels[i] == 1:
                 for scale in np.arange(self.min_line_length, self.max_line_length, self.line_step):
@@ -287,38 +296,40 @@ class PlantLocalizer(object):
         pts_scaled[:, 3] = 1.0     # contain homogenous dim
         line_end_pts = np.array(np.dot(pts_scaled, camera_to_map.T))
         # iterate and save points
-        for i in range(len(line_begin_pts)):
-            if track_ids[i] in self.tracked_plants.track_ids:
-                # get index
-                index = self.tracked_plants.track_ids.index(track_ids[i])
-                # calculate cosine similarity
-                cosine_sim = self.cosine_similarty(
-                    self.tracked_plants.containers[index].begin_pts[-1, :],
-                    self.tracked_plants.containers[index].end_pts[-1, :],
-                    line_begin_pts[i, :-1],
-                    line_end_pts[i, :-1])
-                # print('cosine sim to prev point: ', cosine_sim)
-                # append line if not too similar
-                if cosine_sim < self.cosine_sim:
-                    print('cosine sim to prev point: ', cosine_sim)
-                    self.tracked_plants.containers[index].begin_pts = np.append(
-                        self.tracked_plants.containers[index].begin_pts, [line_begin_pts[i, :-1]], axis=0)
-                    self.tracked_plants.containers[index].end_pts = np.append(
-                        self.tracked_plants.containers[index].end_pts, [line_end_pts[i, :-1]], axis=0)
-                    self.tracked_plants.containers[index].track_id = track_ids[i]
-                    self.add_to_tracker_cloud(line_begin_pts[i, :-1], line_end_pts[i, :-1])
-                    print('Point added to id: ', track_ids[i], ' begin: ', line_begin_pts[i, :-1], ' end: ', line_end_pts[i, :-1])
-            else:
-                # create plant
-                plant = TrackContainer()
-                print("Shape line point: ", line_begin_pts[i, :-1].shape, line_begin_pts[i, :-1])
-                print("Shape container point: ", plant.begin_pts.shape)
-                plant.begin_pts = np.append(plant.begin_pts, [line_begin_pts[i, :-1]], axis=0)
-                plant.end_pts = np.append(plant.end_pts, [line_end_pts[i, :-1]], axis=0)
-                plant.track_id = track_ids[i]
-                self.tracked_plants.track_ids.append(track_ids[i])
-                self.tracked_plants.containers.append(deepcopy(plant))
-                print('New plant added')
+        if len(track_ids) == len(line_begin_pts):
+            for i in range(len(line_begin_pts)):
+                if track_ids[i] in self.tracked_plants.track_ids:
+                    # and (track_ids[i] == 1 or track_ids[i] == 34):
+                    # get index
+                    index = self.tracked_plants.track_ids.index(track_ids[i])
+                    # calculate cosine similarity
+                    cosine_sim = self.cosine_similarty(
+                        self.tracked_plants.containers[index].begin_pts[-1, :],
+                        self.tracked_plants.containers[index].end_pts[-1, :],
+                        line_begin_pts[i, :-1],
+                        line_end_pts[i, :-1])
+                    # print('cosine sim to prev point: ', cosine_sim)
+                    # append line if not too similar
+                    if cosine_sim < self.cosine_sim:
+                        # print('cosine sim to prev point: ', cosine_sim)
+                        self.tracked_plants.containers[index].begin_pts = np.append(
+                            self.tracked_plants.containers[index].begin_pts, [line_begin_pts[i, :-1]], axis=0)
+                        self.tracked_plants.containers[index].end_pts = np.append(
+                            self.tracked_plants.containers[index].end_pts, [line_end_pts[i, :-1]], axis=0)
+                        self.tracked_plants.containers[index].track_id = track_ids[i]
+                        self.add_to_tracker_cloud(line_begin_pts[i, :-1], line_end_pts[i, :-1])
+                        print('Point added to id: ', track_ids[i], ' begin: ', line_begin_pts[i, :-1], ' end: ', line_end_pts[i, :-1])
+                else:
+                    # create plant
+                    plant = TrackContainer()
+                    print("Shape line point: ", line_begin_pts[i, :-1].shape, line_begin_pts[i, :-1])
+                    print("Shape container point: ", plant.begin_pts.shape)
+                    plant.begin_pts = np.append(plant.begin_pts, [line_begin_pts[i, :-1]], axis=0)
+                    plant.end_pts = np.append(plant.end_pts, [line_end_pts[i, :-1]], axis=0)
+                    plant.track_id = track_ids[i]
+                    self.tracked_plants.track_ids.append(track_ids[i])
+                    self.tracked_plants.containers.append(deepcopy(plant))
+                    print('New plant added')
 
     def update_locations(self):
         print('=========== UPDATE LOCATIONS ===========')
@@ -326,14 +337,15 @@ class PlantLocalizer(object):
             if len(plant.begin_pts) > self.min_number_lines:
                 # intersect
                 intersection = self.intersect_lines(plant.begin_pts, plant.end_pts)
+                self.plant_locations.append(deepcopy(intersection))
                 scale = Scale()
                 print('intersection point: ', intersection)
                 self.set_maker(plant.track_id, intersection, scale)
 
-    def calculate_center_points(self, bounding_boxes):
+    def calculate_center_points(self, bounding_boxes, tracked):
         center_points = np.zeros((len(bounding_boxes), 1, 2), dtype=np.float32)
         labels = []
-        i = 0
+        tracked_ids = []
         for box in bounding_boxes:
             #   --> x
             #   |
@@ -341,10 +353,14 @@ class PlantLocalizer(object):
             center_x = box.xmin + int((box.xmax-box.xmin)/2)
             center_y = box.ymin + int((box.ymax-box.ymin)/2)
             center_point = [center_x, center_y]
-            center_points[i, :] = center_point
-            labels.append(box.id)
-            i += 1
-        return center_points, labels
+            if tracked:
+                labels.append(box.class_id)
+                tracked_ids.append(box.track_id)
+            else:
+                labels.append(box.id)
+
+            return center_points, labels, tracked_ids
+
 
     def cb_objects(self, msg):
         object_number = msg.count
@@ -354,43 +370,53 @@ class PlantLocalizer(object):
 
     def filter_bounding_boxes(self, bounding_boxes):
         filtered_boxes = []
-        for box in bounding_boxes:
+        # for box in bounding_boxes:
+        for i in range(len(bounding_boxes)):
             #   --> x
             #   |
             #   v  y
-            width = box.xmax-box.xmin
-            height = box.ymax-box.ymin
-            print('width: ', width, '   height: ', height)
-            wth_ratio = width/height
-            if True:
-                filtered_boxes.append(box)
+            if bounding_boxes[i].xmax < self.image_width - self.discard_margin and \
+                    bounding_boxes[i].ymax < self.image_height - self.discard_margin and \
+                    bounding_boxes[i].xmin > self.discard_margin and \
+                    bounding_boxes[i].ymin > self.discard_margin:
+                filtered_boxes.append(bounding_boxes[i])
+            # else:
+        """
+        print("Bounding Box filtered")
+        print(filtered_boxes)
+        print("Filtered IDS")
+        print(filtered_ids)
+        """
         return filtered_boxes
 
     def cb_bounding_boxes(self, msg):
         if len(msg.bounding_boxes) > 0 and self.create_pc:
-            print('bounding box received')
+            # print('bounding box received')
             self.bounding_box_time = msg.header.stamp
             # get time of image of detection for correct time stamp
             image_time = msg.image_header.stamp
             filtered_boxed = self.filter_bounding_boxes(msg.bounding_boxes)
             if len(filtered_boxed) > 0:
-                center_points, labels = self.calculate_center_points(filtered_boxed)
-                print("Center points pixel: ", center_points, "  Labels: ", labels)
+                center_points, labels, tracked_ids = self.calculate_center_points(filtered_boxed, False)
+                # print("Center points pixel: ", center_points, "  Labels: ", labels)
                 xyz_h = self.undistort_and_project(center_points)
                 # add lines to point cloud
                 self.calculate_and_add_lines(xyz_h, labels, image_time)
 
     def cb_tracked_bounding_boxes(self, msg):
-        # print('tracked bounding box received')
-        if len(msg.bounding_boxes.bounding_boxes) > 0:
-            self.bounding_box_time = msg.bounding_boxes.header.stamp
+        # print('tracked bounding box received:')
+        filtered_boxes = self.filter_bounding_boxes(msg.bounding_boxes)
+        #print('tracked filtered')
+        if len(filtered_boxes) > 0:
+            self.bounding_box_time = msg.header.stamp
             # get time of image of detection for correct time stamp
-            image_time = msg.bounding_boxes.image_header.stamp
-            # filtered_boxed, scale_est = self.filter_bounding_boxes(msg.bounding_boxes)
-            center_points, labels = self.calculate_center_points(msg.bounding_boxes.bounding_boxes)
+            image_time = msg.image_header.stamp
+            center_points, labels, tracked_ids = self.calculate_center_points(filtered_boxes, True)
+            # print("center points calculated")
             # print("Center points pixel: ", center_points, "  Labels: ", labels)
             xyz_h = self.undistort_and_project(center_points)
-            self.add_to_container(xyz_h, msg.track_ids, image_time)
+            self.add_to_container(xyz_h, tracked_ids, image_time)
+            # print("added to container")
             self.refresh_locations += 1
             if self.refresh_locations > 100:
                 self.update_locations()
@@ -434,7 +460,7 @@ class PlantLocalizer(object):
 
         # generate the array of all projectors
         projectors = np.eye(n.shape[1]) - n[:, :, np.newaxis] * n[:, np.newaxis]  # I - n*n.T
-        print("projectors: ", projectors, ' shape: ', projectors.shape)
+        # print("projectors: ", projectors, ' shape: ', projectors.shape)
 
         # generate R matrix and q vector
         R = projectors.sum(axis=0)
