@@ -1,10 +1,21 @@
 # tello_keyboard_teleop
 Generic Keyboard Teleop for the Tello drone in ROS
 
-# Launch
-Run.
+## Dependancies
+This packages depends on the python libary pynput. You should install it before launch
 ```
-rosrun tello_keyboard_teleop tello_keyboard_teleop.py
+pip install pynput
+```
+
+## Launch
+Run for simultanious movement.
+```
+rosrun tello_keyboard_teleop tello_keyboard_teleop.py 
+```
+
+Run for simultanious movement.
+```
+rosrun tello_keyboard_teleop tello_keyboard_teleop_2.py 
 ```
 
 With custom values.
@@ -13,30 +24,45 @@ rosrun teleop_twist_keyboard teleop_twist_keyboard.py _speed:=0.9 _turn:=0.8
 ```
 
 
-# Usage
+## Usage
 ```
-Reading from the keyboard  and Publishing to Twist!
----------------------------
-Moving around:
-   u    i    o
-   j    k    l
-   m    ,    .
+---------------------------------------------------------
+Reading from the keyboard and publishing to Twist message
+---------------------------------------------------------
+Moving around, forward backward left right:
+        ^    
+   <         >
+        v    
 
-For Holonomic mode (strafing), hold down the shift key:
----------------------------
-   U    I    O
-   J    K    L
-   M    <    >
+Key.up: 'forward',
+Key.down: 'backward',
+Key.left: 'left',
+Key.right: 'right',
 
-t : up (+z)
-b : down (-z)
 
-anything else : stop
+Rotating around z-axis and moving up down:
+        w    
+   a         d
+        y    
 
-q/z : increase/decrease max speeds by 10%
-w/x : increase/decrease only linear speed by 10%
-e/c : increase/decrease only angular speed by 10%
+'w': 'up',
+'y': 'down',
+'a': 'counter_clockwise',
+'d': 'clockwise',
 
-CTRL-C to quit
+'+': increase max speeds by 0.1
+'-': decrease max speeds by 0.1
+default: 0.5
+
+space: Takeof, tap again: land
+
+
+ESC or CTRL to quit
+---------------------------------------------------------
+
 ```
+
+## Output 
+Twist message
+
 
