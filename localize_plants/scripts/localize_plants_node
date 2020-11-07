@@ -164,19 +164,22 @@ class PlantLocalizer(object):
         """try to transfrom from current points from camera frame to map frame
         """
         try:
-            latency = rospy.Duration(self.latency)
-            lookup_time = img_time - latency
+            # latency = rospy.Duration(self.latency)
+            # lookup_time = img_time - latency
             self.pos_listener.waitForTransform('map', 'camera_frame', rospy.Time(), rospy.Duration(10))
             # lookup_time = rospy.Time.now() - rospy.Duration(self.latency)
             # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
             # print("look up transform")
-            # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', img_time)
-            trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
+            trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', img_time)
+            #trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', rospy.Time.now())
+            # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', lookup_time)
+            # print (trans, rot)
             # print('current_time: ', rospy.Time.now(), '  time from bounding box:', self.bounding_box_time)
-            # trans, rot = self.pos_listener.lookupTransform('map', 'camera_frame', self.bounding_box_time)
+            # trans, rot = self.pos_listener.lo okupTransform('map', 'camera_frame', self.bounding_box_time)
             # Get relative transform between frames
             # offset_to_world = np.matrix(transformations.quaternion_matrix(rot))
             trans_to_map = np.array(transformations.quaternion_matrix(rot))
+            # print("Rotation matrix: ", trans_to_map)
             trans_to_map[0, 3] = trans[0]
             trans_to_map[1, 3] = trans[1]
             trans_to_map[2, 3] = trans[2]
@@ -346,6 +349,7 @@ class PlantLocalizer(object):
         center_points = np.zeros((len(bounding_boxes), 1, 2), dtype=np.float32)
         labels = []
         tracked_ids = []
+        i = 0
         for box in bounding_boxes:
             #   --> x
             #   |
@@ -353,14 +357,15 @@ class PlantLocalizer(object):
             center_x = box.xmin + int((box.xmax-box.xmin)/2)
             center_y = box.ymin + int((box.ymax-box.ymin)/2)
             center_point = [center_x, center_y]
+            center_points[i, :] = center_point
+            i += 1
             if tracked:
                 labels.append(box.class_id)
                 tracked_ids.append(box.track_id)
             else:
                 labels.append(box.id)
 
-            return center_points, labels, tracked_ids
-
+        return center_points, labels, tracked_ids
 
     def cb_objects(self, msg):
         object_number = msg.count
