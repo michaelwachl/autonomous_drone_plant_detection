@@ -38,6 +38,7 @@ cd ~/catkin_ws/
 sudo chmod 777 -R miniconda3/
 sudo chmod 777 -R catkin_ws/
 sudo chmod 777 -R .ros/
+sudo chmod 777 -R .conda/
 
 catkin_make
 source devel/setup.bash
