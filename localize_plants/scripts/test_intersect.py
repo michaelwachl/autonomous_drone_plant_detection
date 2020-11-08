@@ -2,6 +2,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+
+def perpendicular_distance(point, line_points, projectors):
+    diff = line_points-point[:, 0]  # (a - p)
+    temp = np.matmul(projectors, diff[:, :, np.newaxis])    # (I - nnT)(a - p)
+    squared_distances = np.matmul(diff[:, np.newaxis], temp)    # (a -p)T(I - nnT)(a - p)
+    distances = np.sqrt(squared_distances)
+    mean_distance = np.mean(distances)
+    std_distance = np.std(distances)
+    print('mean: %s  std: %s' % (mean_distance, std_distance))
+    return distances, mean_distance, std_distance
+
+
 def intersect(P0, P1):
     """P0 and P1 are NxD arrays defining N lines.
     D is the dimension of the space. This function
@@ -10,9 +22,10 @@ def intersect(P0, P1):
     http://cal.cs.illinois.edu/~johannes/research/LS_line_intersect.pdf.
     """
     # generate all line direction vectors
-    n = (P1-P0)/np.linalg.norm(P1-P0, axis=1)[:, np.newaxis] # normalized
+    n = (P1-P0)/np.linalg.norm(P1-P0, axis=1)[:, np.newaxis]    # normalized
     print("direction vectors: ", n, " shape: ", n.shape)
     # generate the array of all projectors
+    # print('nt*n', np.matmul(n[:, np.newaxis], n[:, :, np.newaxis]))
     projs = np.eye(n.shape[1]) - n[:, :, np.newaxis]*n[:, np.newaxis]  # I - n*n.T
     print("Projection: ", projs.shape)
     print("---------------------------------------")
@@ -30,8 +43,9 @@ def intersect(P0, P1):
 
     # solve the least squares problem for the
     # intersection point p: Rp = q
-    p = np.linalg.lstsq(R,q,rcond=None)[0]
+    p = np.linalg.lstsq(R, q, rcond=None)[0]
 
+    perpendicular_distance(p, P0, projs)
     return p
 
 
@@ -41,6 +55,21 @@ print("start points: ", P0)
 a = np.linspace(0, 2*np.pi, n) + np.random.random(size=n)*np.pi/5.0
 P1 = np.array([5+5*np.sin(a), 5+5*np.cos(a), 5+5*np.sin(a)]).T
 print("end points: ", P1)
+
+# test intersection
+"""
+p_beg = np.zeros((2, 3), dtype=np.float32)
+p_end = np.zeros((2, 3), dtype=np.float32)
+
+p_beg[0, :] = [0.0, 0.0, 0.0]
+p_beg[1, :] = [2.0, 0.0, 0.0]
+
+p_end[0, :] = [0.0, 3.0, 0.0]
+p_end[1, :] = [-2.0, 4.0, 0.0]
+
+intersection = self.intersect_lines(p_beg, p_end)
+print(intersection)
+"""
 
 # test 2 intersection
 """"

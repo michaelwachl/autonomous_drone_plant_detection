@@ -1,0 +1,31 @@
+create_pc: true
+
+latency: 0.1
+
+min_number_lines: 7
+cosine_sim: 0.993
+min_line_length: 0.5
+max_line_length: 5.0
+line_step: 0.1
+discard_margin: 10     # in pixel
+latency_image_position: 0.2
+
+image_width: 960
+image_height: 720
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [914.248921, 0.000000, 494.593025, 0.000000, 911.815899, 358.659256, 0.000000, 0.000000, 1.000000]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.035558, 0.084783, -0.001964, -0.000589, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [937.878723, 0.000000, 489.753885, 0.000000, 0.000000, 939.156738, 363.172139, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]

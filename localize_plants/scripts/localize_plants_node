@@ -26,14 +26,18 @@ class Scale:
     y = 0.2
     z = 0.2
 
+
 class TrackContainer:
     """Container for all lines of tracked object"""
     begin_pts = np.empty((0, 3), dtype=np.float32)
     end_pts = np.empty((0, 3), dtype=np.float32)
+    frame_pts = np.empty((0, 3), dtype=np.float32)
     class_id = None
     track_id = None
 
+
 class AllContainer:
+    """Container for all objects"""
     track_ids = []
     containers = []
 
@@ -58,10 +62,9 @@ class PlantLocalizer(object):
         self.min_number_lines = rospy.get_param('~min_number_lines')
         self.cosine_sim = rospy.get_param('~cosine_sim')
         self.create_pc = rospy.get_param('~create_pc')
+        self.debug_out = rospy.get_param('~debug_out')
         self.image_width = rospy.get_param('~image_width')
         self.image_height = rospy.get_param('~image_height')
-
-        #print(self.camera_matrix)
 
         # camera matrix for tello single cam
         """              f  x  0 
@@ -83,7 +86,6 @@ class PlantLocalizer(object):
                                        
         self.dist_coeffs = np.array([-0.034749, 0.071514, 0.000363, 0.003131, 0.000000], dtype=np.float32)                             
         """
-
         # define variables
         self.current_pose = PoseStamped()
         self.current_yaw = 0.0
@@ -135,30 +137,16 @@ class PlantLocalizer(object):
 
         # invert camera matrix for projetion to 3D coordinates
         self.camera_matrix_inv = np.linalg.inv(self.camera_matrix)
-
+        """
         self.test = np.zeros((3, 2), dtype=np.float32)
         self.test[0, :] = [486.99, 364.30]
         self.test[1, :] = [0.0, 0.0]
         self.test[2, :] = [600.0, 400.0]
         self.labels = [0, 1, 0]
+        """
         print('init done')
         # keep process alive
         rospy.spin()
-
-        # test intersection
-        """
-        p_beg = np.zeros((2, 3), dtype=np.float32)
-        p_end = np.zeros((2, 3), dtype=np.float32)
-
-        p_beg[0, :] = [0.0, 0.0, 0.0]
-        p_beg[1, :] = [2.0, 0.0, 0.0]
-
-        p_end[0, :] = [0.0, 3.0, 0.0]
-        p_end[1, :] = [-2.0, 4.0, 0.0]
-
-        intersection = self.intersect_lines(p_beg, p_end)
-        print(intersection)
-        """
 
     def get_transform_to_map(self, img_time):
         """try to transfrom from current points from camera frame to map frame
@@ -347,6 +335,7 @@ class PlantLocalizer(object):
 
     def calculate_center_points(self, bounding_boxes, tracked):
         center_points = np.zeros((len(bounding_boxes), 1, 2), dtype=np.float32)
+        frame_points = np.zeros((len(bounding_boxes)*4, 1, 2), dtype=np.float32)
         labels = []
         tracked_ids = []
         i = 0
@@ -354,18 +343,23 @@ class PlantLocalizer(object):
             #   --> x
             #   |
             #   v  y
-            center_x = box.xmin + int((box.xmax-box.xmin)/2)
-            center_y = box.ymin + int((box.ymax-box.ymin)/2)
+            half_width = int((box.xmax-box.xmin)/2)
+            half_height = int((box.ymax-box.ymin)/2)
+            center_x = box.xmin + half_width
+            center_y = box.ymin + half_height
             center_point = [center_x, center_y]
             center_points[i, :] = center_point
+            frame_points[i, :] = [center_x - half_width, center_y]       # left
+            frame_points[i+1, :] = [center_x + half_width, center_y]     # right
+            frame_points[i+2, :] = [center_x, center_y + half_height]     # top
+            frame_points[i+3, :] = [center_x, center_y - half_height]     # bottom
             i += 1
             if tracked:
                 labels.append(box.class_id)
                 tracked_ids.append(box.track_id)
             else:
                 labels.append(box.id)
-
-        return center_points, labels, tracked_ids
+        return center_points, labels, tracked_ids, frame_points
 
     def cb_objects(self, msg):
         object_number = msg.count
@@ -401,12 +395,13 @@ class PlantLocalizer(object):
             # get time of image of detection for correct time stamp
             image_time = msg.image_header.stamp
             filtered_boxed = self.filter_bounding_boxes(msg.bounding_boxes)
-            if len(filtered_boxed) > 0:
-                center_points, labels, tracked_ids = self.calculate_center_points(filtered_boxed, False)
-                # print("Center points pixel: ", center_points, "  Labels: ", labels)
-                xyz_h = self.undistort_and_project(center_points)
-                # add lines to point cloud
-                self.calculate_and_add_lines(xyz_h, labels, image_time)
+            # if len(filtered_boxed) > 0:
+            # center_points, labels, tracked_ids = self.calculate_center_points(filtered_boxed, False)
+            center_points, labels, tracked_ids, frame_points = self.calculate_center_points(msg.bounding_boxes, False)
+            # print("Center points pixel: ", center_points, "  Labels: ", labels)
+            xyz_h = self.undistort_and_project(center_points)
+            # add lines to point cloud
+            self.calculate_and_add_lines(xyz_h, labels, image_time)
 
     def cb_tracked_bounding_boxes(self, msg):
         # print('tracked bounding box received:')
@@ -416,10 +411,11 @@ class PlantLocalizer(object):
             self.bounding_box_time = msg.header.stamp
             # get time of image of detection for correct time stamp
             image_time = msg.image_header.stamp
-            center_points, labels, tracked_ids = self.calculate_center_points(filtered_boxes, True)
+            center_points, labels, tracked_ids, frame_points = self.calculate_center_points(filtered_boxes, True)
             # print("center points calculated")
             # print("Center points pixel: ", center_points, "  Labels: ", labels)
             xyz_h = self.undistort_and_project(center_points)
+            xyy_frame_h = self.undistort_and_project(frame_points)
             self.add_to_container(xyz_h, tracked_ids, image_time)
             # print("added to container")
             self.refresh_locations += 1
@@ -449,6 +445,15 @@ class PlantLocalizer(object):
             self.slam_orientation_rad = Point(self.slam_orientation_rad_list[0], self.slam_orientation_rad_list[1],
                                               self.slam_orientation_rad_list[2])
 
+    def perpendicular_distance(self, intersection, line_points, projectors):
+        diff = line_points - intersection[:, 0]  # (a - p)
+        temp = np.matmul(projectors, diff[:, :, np.newaxis])  # (I - nnT)(a - p)
+        squared_distances = np.matmul(diff[:, np.newaxis], temp)  # (a -p)T(I - nnT)(a - p)
+        distances = np.sqrt(squared_distances)
+        mean_distance = np.mean(distances)
+        std_distance = np.std(distances)
+        return distances, mean_distance, std_distance
+
     def intersect_lines(self, p_beg, p_end):
         """P0 and P1 are NxD arrays defining N lines (start and end point).
         D is the dimension of the space. This function
@@ -456,7 +461,7 @@ class PlantLocalizer(object):
         lines from the system.
 
         reference: equation 13 in
-        http://cal.cs.illinois.edu/~johannes/research/LS_line_intersect.pdf.
+        https://silo.tips/download/least-squares-intersection-of-lines
         """
         # generate all line direction vectors
         n = (p_end - p_beg) / np.linalg.norm(p_end - p_beg, axis=1)[:, np.newaxis]  # normalized
@@ -474,6 +479,12 @@ class PlantLocalizer(object):
         # solve the least squares problem for the
         # intersection point p: Rp = q
         intersection = np.linalg.lstsq(R, q, rcond=None)[0]
+
+        if self.debug_out:
+            distances, mean_distance, std_distance = self.perpendicular_distance(intersection, p_beg, projectors)
+            print('Intersection: ', intersection)
+            print('Distances: ', distances)
+            print('Mean: %s  Std: %s' % (mean_distance, std_distance))
         return intersection
 
     def set_maker(self, id_marker, position, scale):
