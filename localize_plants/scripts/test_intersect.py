@@ -49,6 +49,19 @@ def intersect(P0, P1):
     return p
 
 
+def calculate_distance(point_a, point_b):
+    """Calculate euclidean distance, the l2 norm between two points"""
+    diff = point_a - point_b
+    distance = np.linalg.norm(diff)
+    return distance
+
+
+# test distance
+point_a = np.array([[1.06459216], [-1.17890252], [1.38175359]])
+point_b = np.array([[1.28685798], [-1.35856782], [1.54531699]])
+print('distance =', calculate_distance(point_a, point_b))
+
+# test intersection
 n = 6
 P0 = np.stack((np.array([5, 5, 5]) + 5*np.random.random(size=3) for i in range(n)))
 print("start points: ", P0)
@@ -56,7 +69,7 @@ a = np.linspace(0, 2*np.pi, n) + np.random.random(size=n)*np.pi/5.0
 P1 = np.array([5+5*np.sin(a), 5+5*np.cos(a), 5+5*np.sin(a)]).T
 print("end points: ", P1)
 
-# test intersection
+
 """
 p_beg = np.zeros((2, 3), dtype=np.float32)
 p_end = np.zeros((2, 3), dtype=np.float32)

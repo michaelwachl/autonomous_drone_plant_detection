@@ -1,9 +1,11 @@
 create_pc: true
-
+debug_out: true
+location_update: 100
 latency: 0.1
 
-min_number_lines: 7
-cosine_sim: 0.993
+min_number_lines: 5
+min_object_distance: 0.45
+cosine_sim: 0.995
 min_line_length: 0.5
 max_line_length: 5.0
 line_step: 0.1

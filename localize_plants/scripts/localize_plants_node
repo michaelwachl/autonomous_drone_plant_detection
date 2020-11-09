@@ -1,15 +1,12 @@
 #!/usr/bin/env python
-import sys
+
 import rospy
-import time
 from geometry_msgs.msg import Twist, PoseStamped, Point, Pose, Quaternion, PoseArray
-# import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud
 from nav_msgs.msg import Path, Odometry
 from geometry_msgs.msg import PoseStamped, Point32
 from std_msgs.msg import String, Empty, Int8, Header
 from visualization_msgs.msg import Marker
-from sensor_msgs.msg import Image, ChannelFloat32
 from darknet_ros_msgs.msg import BoundingBox, BoundingBoxes, ObjectCount
 from sort_track.msg import TrackedBoundingBoxes
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -32,6 +29,7 @@ class TrackContainer:
     begin_pts = np.empty((0, 3), dtype=np.float32)
     end_pts = np.empty((0, 3), dtype=np.float32)
     frame_pts = np.empty((0, 3), dtype=np.float32)
+    intersection = np.empty((0, 3), dtype=np.float32)
     class_id = None
     track_id = None
 
@@ -43,7 +41,8 @@ class AllContainer:
 
 
 class PlantLocalizer(object):
-    """Controller to fly Tello in 3D coordinates"""
+    """Class Localizer for received bounding boxes and estimate 3D position from it and the
+    current Position of the device"""
     def __init__(self):
 
         # initialize ROS node
@@ -63,6 +62,9 @@ class PlantLocalizer(object):
         self.cosine_sim = rospy.get_param('~cosine_sim')
         self.create_pc = rospy.get_param('~create_pc')
         self.debug_out = rospy.get_param('~debug_out')
+        self.location_update = rospy.get_param('~location_update')
+        self.min_object_distance = rospy.get_param('~min_object_distance')
+
         self.image_width = rospy.get_param('~image_width')
         self.image_height = rospy.get_param('~image_height')
 
@@ -131,7 +133,8 @@ class PlantLocalizer(object):
 
         # containers for localizations
         self.refresh_locations = 0
-        self.plant_locations = []
+        self.refresh_merge = 0
+        # self.plant_locations = []
         self.tracked_plant = TrackContainer()
         self.tracked_plants = AllContainer()
 
@@ -200,6 +203,8 @@ class PlantLocalizer(object):
         return xyz_pts_h
 
     def calculate_and_add_lines(self, points, labels, time_im):
+        """Calculate point cloud lines from detected class and bounding box to visualize in
+        rviz"""
         if not self.create_pc:
             return
         # get current transformation
@@ -222,8 +227,8 @@ class PlantLocalizer(object):
                     self.line_point.x = point_in_map[0]
                     self.line_point.y = point_in_map[1]
                     self.line_point.z = point_in_map[2]
-                    if 3.1 > self.line_point.x > 2.9:
-                        print('World Point in 3m: ', self.line_point)
+                    # if 3.1 > self.line_point.x > 2.9:
+                    #    print('World Point in 3m: ', self.line_point)
                     self.first_pointcould.points.append(deepcopy(self.line_point))
             elif labels[i] == 1:
                 for scale in np.arange(self.min_line_length, self.max_line_length, self.line_step):
@@ -238,10 +243,11 @@ class PlantLocalizer(object):
         # publish pointclouds
         self.pub_first_cloud.publish(self.first_pointcould)
         self.pub_second_cloud.publish(self.second_pointcould)
-        print('New lines published')
+        # print('New lines published')
 
     def cosine_similarty(self, a_beg, a_end, b_beg, b_end):
-        """returned: cos_sim
+        """Calculate cosine similarity from previous line to current line
+        returned: cos_sim
                 -1 meaning exactly opposite
                 1 meaning exactly the same
                 0 indicating orthogonality or decorrelation
@@ -258,6 +264,7 @@ class PlantLocalizer(object):
         return cos_sim
 
     def add_to_tracker_cloud(self, pt_begin, pt_end):
+        """Calculate point cloud lines from detected bounding box to visualize in rviz"""
         x_len = abs(pt_end[0] - pt_begin[0])
         y_len = abs(pt_end[1] - pt_begin[1])
         z_len = abs(pt_end[2] - pt_begin[2])
@@ -322,18 +329,8 @@ class PlantLocalizer(object):
                     self.tracked_plants.containers.append(deepcopy(plant))
                     print('New plant added')
 
-    def update_locations(self):
-        print('=========== UPDATE LOCATIONS ===========')
-        for plant in self.tracked_plants.containers:
-            if len(plant.begin_pts) > self.min_number_lines:
-                # intersect
-                intersection = self.intersect_lines(plant.begin_pts, plant.end_pts)
-                self.plant_locations.append(deepcopy(intersection))
-                scale = Scale()
-                print('intersection point: ', intersection)
-                self.set_maker(plant.track_id, intersection, scale)
-
     def calculate_center_points(self, bounding_boxes, tracked):
+        """Calculate center point and cross points of bounding boxes"""
         center_points = np.zeros((len(bounding_boxes), 1, 2), dtype=np.float32)
         frame_points = np.zeros((len(bounding_boxes)*4, 1, 2), dtype=np.float32)
         labels = []
@@ -368,6 +365,8 @@ class PlantLocalizer(object):
         return 1.0
 
     def filter_bounding_boxes(self, bounding_boxes):
+        """Filter received bounding boxes, all bounding boxes close to frame with a margin are
+        discarded"""
         filtered_boxes = []
         # for box in bounding_boxes:
         for i in range(len(bounding_boxes)):
@@ -389,6 +388,7 @@ class PlantLocalizer(object):
         return filtered_boxes
 
     def cb_bounding_boxes(self, msg):
+        """Callback for bounding boxes from yolo algorithm"""
         if len(msg.bounding_boxes) > 0 and self.create_pc:
             # print('bounding box received')
             self.bounding_box_time = msg.header.stamp
@@ -404,6 +404,7 @@ class PlantLocalizer(object):
             self.calculate_and_add_lines(xyz_h, labels, image_time)
 
     def cb_tracked_bounding_boxes(self, msg):
+        """Callback for tracked bounding boxes from sort track algorithm"""
         # print('tracked bounding box received:')
         filtered_boxes = self.filter_bounding_boxes(msg.bounding_boxes)
         #print('tracked filtered')
@@ -415,15 +416,20 @@ class PlantLocalizer(object):
             # print("center points calculated")
             # print("Center points pixel: ", center_points, "  Labels: ", labels)
             xyz_h = self.undistort_and_project(center_points)
-            xyy_frame_h = self.undistort_and_project(frame_points)
+            # xyy_frame_h = self.undistort_and_project(frame_points)
             self.add_to_container(xyz_h, tracked_ids, image_time)
             # print("added to container")
             self.refresh_locations += 1
-            if self.refresh_locations > 100:
+            self.refresh_merge += 1
+            if self.refresh_locations > self.location_update:
                 self.update_locations()
                 self.refresh_locations = 0
+            if self.refresh_merge > self.location_update*2:
+                self.merge_multible_plants()
+                self.refresh_merge = 0
 
     def cb_odom(self, msg):
+        """Callback for odometry from device"""
         # print('odom callback')
         if self.slam_control == False:
             self.bag_time = msg.header.stamp
@@ -437,6 +443,7 @@ class PlantLocalizer(object):
             self.current_yaw = current_angles[2]
 
     def cb_slam_position(self, msg):
+        """Callback for current position from orbslam2 algorithm"""
         if self.slam_control:
             self.slam_pos = msg.pose.position
             self.slam_quaternion = msg.pose.orientation
@@ -446,6 +453,7 @@ class PlantLocalizer(object):
                                               self.slam_orientation_rad_list[2])
 
     def perpendicular_distance(self, intersection, line_points, projectors):
+        """Calculate all distances, mean and std of distances from intersection point"""
         diff = line_points - intersection[:, 0]  # (a - p)
         temp = np.matmul(projectors, diff[:, :, np.newaxis])  # (I - nnT)(a - p)
         squared_distances = np.matmul(diff[:, np.newaxis], temp)  # (a -p)T(I - nnT)(a - p)
@@ -487,6 +495,72 @@ class PlantLocalizer(object):
             print('Mean: %s  Std: %s' % (mean_distance, std_distance))
         return intersection
 
+    def calculate_distance(self, point_a, point_b):
+        """Calculate euclidean distance, the l2 norm between two points"""
+        diff = point_a - point_b
+        distance = np.linalg.norm(diff)
+        return distance
+
+    def delete_maker(self, marker_id):
+        # delete marker
+        marker = Marker()
+        marker.header.frame_id = "world"
+        marker.header.stamp = rospy.Time.now()
+        marker.ns = "tomato_plants"
+        marker.id = marker_id
+        marker.type = 3  # 0=ARROW, 1=CUBE, 2=SPHERE, 3=CYLINDER, 4=LINE_STRIP
+        marker.action = 2  # 0 = add/modify, 1 = (deprecated), 2 = delete, 3 = delete all
+        self.pub_marker.publish(marker)
+        print("marker removed")
+
+    def merge_multible_plants(self):
+        print('=========== MERGE LOCATIONS ===========')
+        close_plants = []
+        # look for plants close to each other
+        for i in range(len(self.tracked_plants.containers)):
+            for j in range(i + 1, len(self.tracked_plants.containers)):
+                if len(self.tracked_plants.containers[i].intersection) > 0 and \
+                        len(self.tracked_plants.containers[j].intersection) > 0:
+                    distance = self.calculate_distance(self.tracked_plants.containers[i].intersection,
+                                                       self.tracked_plants.containers[j].intersection)
+                    if distance < self.min_object_distance:
+                        close_plants.append([i, j])
+
+        # copy older plant to newer plant and pop old plant
+        print('Close plants: ', close_plants, ' Lenght:', len(close_plants))
+        while len(close_plants) > 0:
+            plants_index = close_plants[0]
+            print('Points before: ', self.tracked_plants.containers[plants_index[1]].begin_pts)
+            self.tracked_plants.containers[plants_index[1]].end_pts = np.append(
+                self.tracked_plants.containers[plants_index[1]].end_pts,
+                self.tracked_plants.containers[plants_index[0]].end_pts, axis=0)
+            self.tracked_plants.containers[plants_index[1]].begin_pts = np.append(
+                self.tracked_plants.containers[plants_index[1]].begin_pts,
+                self.tracked_plants.containers[plants_index[0]].begin_pts, axis=0)
+            print('%s was removed and added to %s' % (plants_index[0], plants_index[1]))
+            print('ID %s was removed and added to ID %s' % (self.tracked_plants.track_ids[plants_index[0]],
+                                                            self.tracked_plants.track_ids[plants_index[1]]))
+            print('Points after: ', self.tracked_plants.containers[plants_index[1]].begin_pts)
+            self.delete_maker(self.tracked_plants.track_ids[plants_index[0]])
+            # pop redundant container
+            self.tracked_plants.containers.pop(plants_index[0])
+            self.tracked_plants.track_ids.pop(plants_index[0])
+            close_plants.pop(0)
+
+    def update_locations(self):
+        print('=========== UPDATE LOCATIONS ===========')
+        for i in range(len(self.tracked_plants.containers)):
+        #for plant in self.tracked_plants.containers:
+            plant = self.tracked_plants.containers[i]
+            if len(plant.begin_pts) > self.min_number_lines:
+                # intersect
+                intersection = self.intersect_lines(plant.begin_pts, plant.end_pts)
+                self.tracked_plants.containers[i].intersection = deepcopy(intersection)
+                # self.plant_locations.append(deepcopy(intersection))
+                scale = Scale()
+                # print('intersection point: ', intersection)
+                self.set_maker(plant.track_id, intersection, scale)
+
     def set_maker(self, id_marker, position, scale):
         """ Set a marker in rviz with an id
         the position is the center of the object and scale is its dimensions. e.g. scale.z = 1.0 is 1m height
@@ -512,6 +586,7 @@ class PlantLocalizer(object):
         marker.color.r = 0.0
         marker.color.g = 1.0
         marker.color.b = 0.0
+        # marker.lifetime = rospy.Duration(0.5)   # 3 seconds
         self.pub_marker.publish(marker)
         print("marker published")
 

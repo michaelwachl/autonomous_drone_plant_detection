@@ -1,5 +1,6 @@
 <launch>
 
+
   <!-- set simulation time -->
   <param name="/use_sim_time" type="bool" value="true" />
   <!--
@@ -8,6 +9,10 @@
 
   <!-- Load robot description -->
   <include file="$(find tello_description)/launch/description.launch" />
+  <!--   
+  <node pkg="tf" type="static_transform_publisher" name="camera_frame_bc" args="0.035 0 0 1.3628 3.14159 1.570796 base_link camera_frame 100" /> 
+  -->
+
 
   <!-- Start localiye node  
   <node name="localize_plants_node" pkg="localize_plants" type="localize_plants_node" output="screen"> 
