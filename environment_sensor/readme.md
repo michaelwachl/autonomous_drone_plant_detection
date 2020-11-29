@@ -31,27 +31,24 @@ the [BME680](https://www.adafruit.com/product/3660) and [SCD30](https://www.spar
 The source code is released under a [MIT license](../LICENSE).
 
 **Author: Michael Wachl**  
-Affiliation: [Siemens](https://new.siemens.com/global/en.html)<br />
-             [TUM-RCS](https://www.ei.tum.de/rcs/startseite/)<br />
+Affiliation: 
+* [Siemens](https://new.siemens.com/global/en.html)<br />
+* [TUM-RCS](https://www.ei.tum.de/rcs/startseite/)<br />
 
-Maintainer: Michael Wachl, michael.wachl@tum.de**
+Maintainer: Michael Wachl, michael.wachl@tum.de
 
 This package has been tested under [ROS] Melodic and Ubuntu 18.04. This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
-
-
-
-![Example image](doc/example.jpg)
 
 
 ### Publications
 
 If you use this work in an academic context, please cite the following publication(s):
 
-* Michael Wachl: **PAPER TITLE**. 
+* Michael Wachl: **Monocular Vision-Based Indoor Object Detection and Localization on Autonomous MAV**. 
 
         @inproceedings{Wachl2020,
             author = {Michael Wachl},
-            title = {{MA TITLE}},
+            title = {{Monocular Vision-Based Indoor Object Detection and Localization on Autonomous MAV}},
             year = {2020}
         }
 
