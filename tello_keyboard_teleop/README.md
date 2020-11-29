@@ -58,6 +58,6 @@ ESC or CTRL to quit
 ```
 
 ## Published Topics 
-'tello/cmd_vel' as Twist  
-'tello/takeoff' as Empty  
-'tello/land' as Empty  
+* ```tello/cmd_vel``` [geometry_msgs/Twist](http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html)
+* ```tello/takeoff``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
+* ```tello/land``` [std_msgs/Empty](http://docs.ros.org/api/std_msgs/html/msg/Empty.html)
