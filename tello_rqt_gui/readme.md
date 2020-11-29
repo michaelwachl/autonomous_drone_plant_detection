@@ -107,6 +107,8 @@ GUI_ui_to_py.sh
 ```
 to generate the according Python file.
 
+If PC utility indicator doesn't work, change the internal temperature name in the [system_utility.py](src/tello_rqt/system_utility.py) script.
+
 
 Please report bugs and request features using the [Issue Tracker](../../issues).
 
