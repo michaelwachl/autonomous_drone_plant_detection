@@ -98,5 +98,5 @@ Reads temperature measurements and computed the average.
 
 ## Bugs & Feature Requests
 
-Please report bugs and request features using the [Issue Tracker](../issues).
+Please report bugs and request features using the [Issue Tracker](../../issues).
 
