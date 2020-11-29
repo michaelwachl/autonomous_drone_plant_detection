@@ -1,5 +1,7 @@
 # Environmet Sensor Extension for Tello Drone 
 
+![alt text](doc/pfad_co2.png)
+
 ## Overview
 
 This is a [ROS] package used to listen on **Port 8080** to receive a UDP package from a another machine. In our case a 
