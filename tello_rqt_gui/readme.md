@@ -87,13 +87,21 @@ Reads temperature measurements and computed the average.
 
 #### Subscribed Topics
 
-* **`/temperature`** ([sensor_msgs/Temperature])
-
-
+* **`/tello/picture_update`** String
+* **`/tello/status`** TelloStatus
+* **`/tello/connection_state`** String
+* **`/tello/camera/image_raw`** Image
+* **`/tello/odom`** Odometry
+* **`/orb_slam2_mono/pose`** PoseStamped
+* **`/tello_controller/slam_real_world_scale`** Float32
+* **`/tello_controller/mission_state`** String
 
 #### Published Topics
 
-* **`/environment_sensor/scd30`** (environment_sensor.msg/SCD30)
+* **`/tello/connect`**  Empty
+* **`/tello/disconnect`** Empty
+* **`/tello/take_picture`** Empty
+* **`/tello_controller/mission_command`** String
 
 
 ## Bugs & Feature Requests
