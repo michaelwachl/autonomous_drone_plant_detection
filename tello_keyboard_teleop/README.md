@@ -8,7 +8,7 @@ pip install pynput
 ```
 
 ## Launch
-Run for simultanious movement.
+Run for sequential movement.
 ```
 rosrun tello_keyboard_teleop tello_keyboard_teleop.py 
 ```
@@ -16,11 +16,6 @@ rosrun tello_keyboard_teleop tello_keyboard_teleop.py
 Run for simultanious movement.
 ```
 rosrun tello_keyboard_teleop tello_keyboard_teleop_2.py 
-```
-
-With custom values.
-```
-rosrun teleop_twist_keyboard teleop_twist_keyboard.py _speed:=0.9 _turn:=0.8
 ```
 
 
@@ -62,7 +57,7 @@ ESC or CTRL to quit
 
 ```
 
-## Output 
-Twist message
-
-
+## Published Topics 
+'tello/cmd_vel' as Twist  
+'tello/takeoff' as Empty  
+'tello/land' as Empty  
