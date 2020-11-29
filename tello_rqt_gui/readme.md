@@ -1,8 +1,8 @@
 # Environmet Sensor Extension for Tello Drone 
 
 
-![Example image](../doc/GUI_info.png)
-![Example image](../doc/GUI_video.png)
+![GUI Info](../doc/GUI_info.png)
+![GUI Video](../doc/GUI_video.png)
 
 
 ## Overview
@@ -97,6 +97,16 @@ Reads temperature measurements and computed the average.
 
 
 ## Bugs & Feature Requests
+
+To change UI, edit the following file:  
+[TelloPlugin.ui](src/tello_rqt/resource/TelloPlugin.ui)
+
+afterwards run 
+```
+GUI_ui_to_py.sh
+```
+to generate the according Python file.
+
 
 Please report bugs and request features using the [Issue Tracker](../../issues).
 
