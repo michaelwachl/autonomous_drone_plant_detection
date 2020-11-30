@@ -1,10 +1,9 @@
 # Localize Plants with tracked bounding boxes
+This package is used to localize the objects in 3D based on the pose estimation of the drone or SLAM and the bounding boxes of YOLO
 
 ## Overview
 ![architecture](../doc/localization_arch.png)
 ![localize](../doc/localization.png)
-
-
 
 
 **Keywords:** YOLO, Object Detection, Tracking and Localization
@@ -38,8 +37,7 @@ If you use this work in an academic context, please cite the following publicati
 
 ## Installation
 
-#### Dependencies
-
+### Dependencies
 - [Robot Operating System (ROS)](http://wiki.ros.org) (middleware for robotics)
 - [darknet_ros package](/../darknet_ros)
 - [sort_track package](/../sort_track)
@@ -52,35 +50,64 @@ To build from source, clone the latest version from this repository into your ca
 
 
 ## Usage/Launch
+Make sure tello driver, yolo object detection and the tracker node is launched:
+```
+roslaunch tello_driver tello_node.launch 
+```
+```
+roslaunch darknet_ros yolov4-tiny-custom_tomato.launch 
+```
+```
+roslaunch sort_track sort.launch 
+```
+Now the localization node can be launched:
+```
+roslaunch localize_plants localize_plants.launch 
+```
 
-
-
-## Config files
-
-Config file folder/set 1
-
-* **config_file_1.yaml** Shortly explain the content of this config file
-
-Config file folder/set 2
-
-* **...**
-
+Use teleoperator or MAV controller to fly.
+```
+rosrun tello_keyboard_teleop tello_keyboard_teleop_2.py 
+```
+or/and MAV controller with GUI
+```
+roslaunch tello_controller tello_controller_node.launch 
+```
+```
+rqt
+```
 
 ## Nodes
+`localize_plant_node`
+
+## Config files
+Change camera and localization parameter in the files if needed
+- [localize_fd143a.yaml](config/localize_fd143a.yaml) (in use)
+- [localize.yaml](localize.yaml) (general)
 
 
 
 #### Subscribed Topics
 
-* **`/temperature`** ([sensor_msgs/Temperature])
+* **`/tello/odom`** Odometry
+* **`/darknet_ros/found_object`** ObjectCount
+* **`/darknet_ros/bounding_boxes`** BoundingBoxes
+* **`/sort_tracker/tracked_bounding_boxes`** TrackedBoundingBoxes
 
 
 #### Published Topics
 
-* **`/environment_sensor/scd30`** (environment_sensor.msg/SCD30)
+* **`/plant_localizer/label_one_cloud`** PointCloud
+* **`/plant_localizer/label_two_cloud`** PointCloud
+* **`/plant_localizer/tracker_cloud`** PointCloud
+* **`/plant_marker`** Marker
 
 
-#### Parameters
+### Config files
+Change camera and localization parameter in the files if needed
+- [localize_fd143a.yaml](config/localize_fd143a.yaml) (in use)
+- [localize.yaml](localize.yaml) (general)
+
 
 
 ## Bugs & Feature Requests
