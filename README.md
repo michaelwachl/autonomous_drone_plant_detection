@@ -101,6 +101,10 @@ For instruction on how to set up your machine, CUDA, Darknet and other useful ti
 Useful Websites
 ----------------
 #### Tello
+* [ROS Tello Driver](http://wiki.ros.org/tello_driver)
+* [tello_driver](https://github.com/anqixu/tello_driver)
+* [tello_driver](https://github.com/appie-17/tello_driver)
+* [TelloPy](https://github.com/hanyazou/TelloPy)
 
 #### SLAM
 
@@ -117,7 +121,12 @@ Flybot GUI
 Authors
 =======
 
-* **Michael Wachl**
+* **Author: Michael Wachl**
+* Affiliation: 
+  * [Siemens](https://new.siemens.com/global/en.html)<br />
+  * [TUM-RCS](https://www.ei.tum.de/rcs/startseite/)<br />
+
+Maintainer: Michael Wachl, michael.wachl@tum.de
 
 
 License
