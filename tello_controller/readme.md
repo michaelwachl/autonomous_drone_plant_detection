@@ -40,6 +40,10 @@ To build from source, clone the latest version from this repository into your ca
 ```
 roslaunch tello_controller tello_controller_node.launch
 ```
+The controller can be used together with our GUI
+```
+rqt
+```
 
 ## Config files
 
