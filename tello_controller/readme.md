@@ -52,12 +52,12 @@ Config file in [config](config) folder
 `tello_controller_node`
 
 ## Additional Files
-* [MAV controller implementation and node](scripts/tello_controller.py) 
-* [PID controller implementation](scripts/pid.py) 
+* [MAV controller implementation and node](scripts/tello_controller.py) (Main programm)
+* [PID controller implementation](scripts/pid.py) (Pose controller)
 * [Waypoints templates implementation](scripts/waypoints.py) 
 * [Path implementation including circle path](scripts/path.py)
 * [Mission state machine implementation](scripts/mission_state.py) 
-* [MAV controller logger implementation](scripts/controller_log.py) 
+* [MAV controller logger implementation](scripts/controller_log.py) (For path and PID error plots)
 
 
 #### Subscribed Topics
