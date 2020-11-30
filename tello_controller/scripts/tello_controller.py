@@ -101,7 +101,8 @@ class TelloController(object):
         self.path_msg.poses.append(deepcopy(test_way_pt))
 
         #self.path_msg = test_path.get_path()
-        # self.path_msg = test_wayp.get_path()
+        test_wayp = WayPoints()
+        self.path_msg = test_wayp.get_path()
         # init trail
         self.trail_msg = Path()  # init path
 

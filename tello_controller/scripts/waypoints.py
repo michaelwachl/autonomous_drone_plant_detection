@@ -24,46 +24,55 @@ class WayPoints(object):
 		self.waypoint_1.header.seq = 0
 		self.waypoint_1.header.frame_id = "world"
 		self.waypoint_1.pose.position.x = 0.0
-		self.waypoint_1.pose.position.z = 2.0
+		self.waypoint_1.pose.position.z = 1.8
 		#self.waypoint.pose.orientation.z = 0.7
 		#self.waypoint.pose.orientation.w = 0.7
 
 		self.waypoint_2.header.seq = 1
 		self.waypoint_2.header.frame_id = "world"
-		self.waypoint_2.pose.position.x = 0.0
-		self.waypoint_2.pose.position.y = 1.0
-		self.waypoint_2.pose.position.z = 2.0
-		#self.waypoint_2.pose.orientation.z = 0.7
-		#self.waypoint_2.pose.orientation.w = 0.7
+		self.waypoint_2.pose.position.x = 4.7
+		self.waypoint_2.pose.position.y = 0.0
+		self.waypoint_2.pose.position.z = 1.85
+		self.waypoint_2.pose.orientation.z = -0.7
+		self.waypoint_2.pose.orientation.w = 0.7
 
 		self.waypoint_3.header.seq = 2
 		self.waypoint_3.header.frame_id = "world"
-		self.waypoint_3.pose.position.x = 2.0
-		self.waypoint_3.pose.position.y = 1.0
-		self.waypoint_3.pose.position.z = 2.0
+		self.waypoint_3.pose.position.x = 4.7
+		self.waypoint_3.pose.position.y = -4.5
+		self.waypoint_3.pose.position.z = 1.85
+		self.waypoint_3.pose.orientation.z = 0.0
+		self.waypoint_3.pose.orientation.w = 0.0
+		self.waypoint_3.pose.orientation.y = 1.0
 
 		self.waypoint_4.header.seq = 3
 		self.waypoint_4.header.frame_id = "world"
-		self.waypoint_4.pose.position.x = 2.0
-		self.waypoint_4.pose.position.y = -1.0
-		self.waypoint_4.pose.position.z = 2.0
+		self.waypoint_4.pose.position.x = 1.1
+		self.waypoint_4.pose.position.y = -4.5
+		self.waypoint_4.pose.position.z = 1.85
+		self.waypoint_4.pose.orientation.z = 0.7
+		self.waypoint_4.pose.orientation.w = 0.7
 
 		self.waypoint_5.header.seq = 4
 		self.waypoint_5.header.frame_id = "world"
-		self.waypoint_5.pose.position.x = 0.0
-		self.waypoint_5.pose.position.y = -1.0
-		self.waypoint_5.pose.position.z = 2.0
+		self.waypoint_5.pose.position.x = 1.1
+		self.waypoint_5.pose.position.y = 0.8
+		self.waypoint_5.pose.position.z = 1.85
+		#self.waypoint_5.pose.orientation.z = 0.7
+		#self.waypoint_5.pose.orientation.w = 0.7
 
 		self.waypoint_6.header.seq = 5
 		self.waypoint_6.header.frame_id = "world"
 		self.waypoint_6.pose.position.x = 0.0
-		self.waypoint_6.pose.position.y = 0.0
-		self.waypoint_6.pose.position.z = 0.2
+		self.waypoint_6.pose.position.y = 0.8
+		self.waypoint_6.pose.position.z = 0.5
+		#self.waypoint_6.pose.orientation.z = 0.7
+		#self.waypoint_6.pose.orientation.w = 0.7
 
 		self.waypoint_7.header.seq = 5
 		self.waypoint_7.header.frame_id = "world"
 		self.waypoint_7.pose.position.x = 0.0
-		self.waypoint_7.pose.position.y = 0.0
+		self.waypoint_7.pose.position.y = 0.8
 		self.waypoint_7.pose.position.z = 0.5
 
 		self.path_msg.poses.append(deepcopy(self.waypoint_1))
