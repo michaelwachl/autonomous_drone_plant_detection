@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is a [ROS] package used to 
+This is a [ROS] package used to to convey drone and PC status and video information and visualize them. The absolute relative position coordinates of the odometry and the SLAM estimate are shown in the position data section.  Additionally,  the remaining flight time, height, speed, flight mode and battery state of the drone are shown in  the  flight data area. The Wi-Fi strength of the PC and Wi-FI quality, as  well  as battery percentage of the drone and the system utility of the base station PC, are displayed as bars. This includes CPU and memory utilization and temperature of the computer. Interactive buttons can be used to start land and fly missions with the drone and connect/disconnect.The mission section is the foundation for autonomous tasks. In another tab, the video stream and sequences can be displayed and recorded when needed and pictures can be taken with a higher resolution. The GUI interacts with the drone over the Tello driver packages and can be easily expanded for future requirements.
 
 **Keywords:** RQT
 ### License
@@ -15,45 +15,26 @@ This is a [ROS] package used to
 The source code is released under a [MIT license](../LICENSE).
 
 **Author: Michael Wachl**
-Affiliation: [Siemens](https://new.siemens.com/global/en.html)<br />
-             [TUM-RCS](https://www.ei.tum.de/rcs/startseite/)<br />
+Affiliation: 
+* [Siemens](https://new.siemens.com/global/en.html)<br />
+* [TUM-RCS](https://www.ei.tum.de/rcs/startseite/)<br />
 
 Maintainer: Michael Wachl, michael.wachl@tum.de
 
-The PACKAGE NAME package has been tested under [ROS] Melodic and Ubuntu 18.04. This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
+The package has been tested under [ROS] Melodic and Ubuntu 18.04. This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
 
-
-
-### Publications
-
-If you use this work in an academic context, please cite the following publication(s):
-
-* Michael Wachl: **PAPER TITLE**. 
-
-        @inproceedings{Wachl2020,
-            author = {Michael Wachl},
-            title = {{MA TITLE}},
-            year = {2020}
-        }
 
 
 ## Installation
-
-### Installation from Packages
-
-To install all packages from the this repository as Debian packages use
-
-    sudo apt-get install ros-melodic-...
 
 ### Building from Source
 
 #### Dependencies
 
-- [Robot Operating System (ROS)](http://wiki.ros.org) (middleware for robotics),
-- [Eigen] (linear algebra library)
+- [Robot Operating System (ROS)](http://wiki.ros.org) (middleware for robotics)
+- Qt (graphics library)
+- Numpy
 
-#### Further preparation
-Make sure you allow UDP communication over port 8080 on your machine.
 
 #### Building
 
@@ -78,11 +59,6 @@ rqt
 ``` 
 
 and look for the flybot plugin in the list.
-
-
-## Nodes
-
-Reads temperature measurements and computed the average.
 
 
 #### Subscribed Topics
