@@ -51,6 +51,13 @@ Config file in [config](config) folder
 ## Node
 `tello_controller_node`
 
+## Additional Files
+* [MAV controller implementation and node](scripts/tello_controller.py) 
+* [PID controller implementation](scripts/pid.py) 
+* [Waypoints templates implementation](scripts/waypoints.py) 
+* [Path implementation including circle path](scripts/path.py)
+* [Mission state machine implementation](scripts/mission_state.py) 
+
 
 #### Subscribed Topics
 
@@ -69,13 +76,6 @@ Config file in [config](config) folder
 * **`/tello_controller/target_pose`** PoseStamped
 * **`/tello_controller/mission_command`** String
 * **`/tello_controller/slam_real_world_scale`** Float32
-
-#### Parameters
-
-* **`subscriber_topic`** (string, default: "/temperature")
-
-	The name of the input topic.
-
 
 
 ## Bugs & Feature Requests
