@@ -50,7 +50,7 @@ Then Run the sensor node(s) with
 
 `tello_latency`
 
-Reads temperature measurements and computed the average.
+Computes topic rate and bandwidth, can be also used to publish video with center lines and calculate camera latency.
 
 
 #### Subscribed Topics
