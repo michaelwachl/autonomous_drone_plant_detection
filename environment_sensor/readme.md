@@ -72,6 +72,9 @@ To build from source, clone the latest version from this repository into your ca
 
 
 ## Usage
+Mi Extender needs to be used! The Tello Wi-Fi will be extended and the ESP and PC needs to be connected to the extended Wi-Fi. The name ends with "xxx_plus".
+The environment module needs to be turned on and connected with the Wi-Fi extender in oder to work.  
+
 If no roscore is running, start one with 
     
     roscore
