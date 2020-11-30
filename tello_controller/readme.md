@@ -57,6 +57,7 @@ Config file in [config](config) folder
 * [Waypoints templates implementation](scripts/waypoints.py) 
 * [Path implementation including circle path](scripts/path.py)
 * [Mission state machine implementation](scripts/mission_state.py) 
+* [MAV controller logger implementation](scripts/controller_log.py) 
 
 
 #### Subscribed Topics
